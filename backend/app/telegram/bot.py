@@ -63,6 +63,8 @@ class TelegramNotifier:
         self._running = True
         self._polling_task = asyncio.create_task(self._poll_loop())
         logger.info("Telegram Bot command listener started for chat IDs: %s", settings.telegram_chat_ids_list)
+        # 启动时自动检查并补发未完成推送的新邮件
+        asyncio.create_task(self.flush_pending_notifications())
 
     async def stop_polling(self):
         """停止 Telegram 指令监听"""
@@ -104,6 +106,9 @@ class TelegramNotifier:
 
                         if text:
                             await self._handle_command(chat_id, text, client)
+
+                    # 轮询周期兜底检查是否有未完成推送的新邮件
+                    await self.flush_pending_notifications()
 
                 except asyncio.CancelledError:
                     break
@@ -267,7 +272,7 @@ class TelegramNotifier:
 
         text_content = "\n".join(lines)
 
-        success = True
+        any_success = False
         async with httpx.AsyncClient(timeout=10.0) as client:
             for chat_id in settings.telegram_chat_ids_list:
                 url = f"{self.api_base}/bot{self.bot_token}/sendMessage"
@@ -279,11 +284,62 @@ class TelegramNotifier:
                 }
                 try:
                     resp = await client.post(url, json=payload)
-                    if resp.status_code != 200:
-                        success = False
+                    if resp.status_code == 200:
+                        any_success = True
+                    else:
+                        logger.warning("Telegram send failed for chat %s (%s): %s", chat_id, resp.status_code, resp.text)
                 except Exception as e:
-                    success = False
-        return success
+                    logger.warning("Telegram send exception for chat %s: %s", chat_id, e)
+
+        if any_success:
+            try:
+                async with get_db() as db:
+                    await db.execute("UPDATE emails SET telegram_notified = 1 WHERE id = ?", (mail_id,))
+                    await db.commit()
+            except Exception as db_err:
+                logger.warning("Failed to update telegram_notified for mail %s: %s", mail_id, db_err)
+
+        return any_success
+
+    async def flush_pending_notifications(self, limit: int = 10):
+        """扫描并补发因重启或网络中断导致未发出的 Telegram 通知（断点补发）"""
+        if not self.is_configured:
+            return
+
+        try:
+            async with get_db() as db:
+                cursor = await db.execute(
+                    """
+                    SELECT e.id, e.subject, e.from_name, e.from_address, e.snippet, e.otp_code, a.name as account_name
+                    FROM emails e
+                    JOIN accounts a ON e.account_id = a.id
+                    WHERE e.telegram_notified = 0 AND e.is_deleted = 0
+                    ORDER BY e.id ASC
+                    LIMIT ?
+                    """,
+                    (limit,)
+                )
+                rows = await cursor.fetchall()
+        except Exception as e:
+            logger.warning("Failed to query pending notifications: %s", e)
+            return
+
+        if not rows:
+            return
+
+        logger.info("Found %d pending Telegram notification(s), auto-flushing...", len(rows))
+        for row in rows:
+            ok = await self.send_new_email_notification(
+                mail_id=row["id"],
+                account_name=row["account_name"],
+                subject=row["subject"],
+                from_name=row["from_name"],
+                from_address=row["from_address"],
+                snippet=row["snippet"],
+                otp_code=row["otp_code"]
+            )
+            if ok:
+                await asyncio.sleep(0.5)
 
     async def send_test_message(
         self,

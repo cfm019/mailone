@@ -148,8 +148,8 @@ class SyncManager:
                             INSERT OR IGNORE INTO emails (
                                 account_id, message_id, uid, subject, from_name, from_address,
                                 to_addresses, date, snippet, has_attachments, attachments_json,
-                                otp_code, has_body, eml_path, raw_size
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '', 0)
+                                otp_code, has_body, eml_path, raw_size, telegram_notified
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '', 0, 1)
                             """,
                             (
                                 account_id,
@@ -205,8 +205,8 @@ class SyncManager:
                             INSERT INTO emails (
                                 account_id, message_id, uid, subject, from_name, from_address,
                                 to_addresses, date, snippet, has_attachments, attachments_json,
-                                otp_code, has_body, eml_path, raw_size
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                                otp_code, has_body, eml_path, raw_size, telegram_notified
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 0)
                             """,
                             (
                                 account_id,
@@ -463,8 +463,8 @@ class SyncManager:
                         INSERT OR IGNORE INTO emails (
                             account_id, message_id, uid, subject, from_name, from_address,
                             to_addresses, date, snippet, has_attachments, attachments_json,
-                            otp_code, has_body, eml_path, raw_size
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '', 0)
+                            otp_code, has_body, eml_path, raw_size, telegram_notified
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '', 0, 1)
                         """,
                         (
                             account_id,

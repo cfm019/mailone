@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS emails (
     is_starred INTEGER NOT NULL DEFAULT 0,
     is_deleted INTEGER NOT NULL DEFAULT 0, -- 移入废纸篓
     has_body INTEGER NOT NULL DEFAULT 1, -- 是否已拉取完整正文(0=仅标题, 1=完整本体)
+    telegram_notified INTEGER NOT NULL DEFAULT 0, -- 是否已成功推送通知到 Telegram
     eml_path TEXT NOT NULL DEFAULT '',   -- .eml 相对路径
     raw_size INTEGER NOT NULL DEFAULT 0, -- 文件字节大小
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -73,6 +74,7 @@ CREATE INDEX IF NOT EXISTS idx_emails_date ON emails(date DESC);
 CREATE INDEX IF NOT EXISTS idx_emails_is_deleted ON emails(is_deleted);
 CREATE INDEX IF NOT EXISTS idx_emails_from_address ON emails(from_address);
 CREATE INDEX IF NOT EXISTS idx_emails_otp_code ON emails(otp_code);
+CREATE INDEX IF NOT EXISTS idx_emails_telegram_notified ON emails(telegram_notified);
 
 -- FTS5 全文搜索虚拟表
 CREATE VIRTUAL TABLE IF NOT EXISTS emails_fts USING fts5(
@@ -140,6 +142,18 @@ async def init_db():
                 UPDATE accounts SET history_exhausted = 1 
                 WHERE id IN (SELECT account_id FROM emails GROUP BY account_id HAVING MIN(uid) <= 1)
             """)
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE emails ADD COLUMN telegram_notified INTEGER NOT NULL DEFAULT 0")
+            # 首次为已有数据库增加此字段时，将老邮件置为 1，防止历史邮件刷屏
+            await db.execute("UPDATE emails SET telegram_notified = 1")
+            await db.commit()
+        except Exception:
+            pass  # 已存在该字段
+        try:
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_emails_telegram_notified ON emails(telegram_notified)")
+            await db.commit()
         except Exception:
             pass
 
