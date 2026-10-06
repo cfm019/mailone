@@ -36,12 +36,10 @@ class Settings(BaseSettings):
     DB_PATH: Path = BASE_DIR / "data" / "db.sqlite"
     STORAGE_DIR: Path = BASE_DIR / "data" / "storage"
 
-    # Telegram Bot 推送配置
-    TELEGRAM_BOT_TOKEN: str = Field(default="", env="TELEGRAM_BOT_TOKEN")
-    # 允许接收推送的 Chat ID（多个逗号分隔，如 "12345678,98765432"）
-    TELEGRAM_ALLOWED_CHAT_IDS: str = Field(default="", env="TELEGRAM_ALLOWED_CHAT_IDS")
-    # Telegram API 反代地址（国内服务器可选填，例如 https://api.telegram.org）
-    TELEGRAM_API_BASE: str = Field(default="https://api.telegram.org", env="TELEGRAM_API_BASE")
+    # Telegram Bot 推送配置（通过 Web 界面【设置】统一管理，持久化于 SQLite 数据库）
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_ALLOWED_CHAT_IDS: str = ""
+    TELEGRAM_API_BASE: str = "https://api.telegram.org"
 
     # IMAP 同步引擎设置
     POLL_INTERVAL_SECONDS: int = 60  # IDLE 断开或不支持 IDLE 时的轮询兜底周期

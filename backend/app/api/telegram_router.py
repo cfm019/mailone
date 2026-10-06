@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from backend.app.config import settings
 from backend.app.auth import get_current_user
 from backend.app.telegram.bot import telegram_notifier
-from backend.app.database import set_system_setting, update_env_file
+from backend.app.database import set_system_setting
 
 logger = logging.getLogger("mailone.telegram_router")
 
@@ -52,17 +52,7 @@ async def save_telegram_config(req: TelegramConfigUpdate, user: dict = Depends(g
     await set_system_setting("telegram_allowed_chat_ids", chat_ids)
     await set_system_setting("telegram_api_base", api_base)
 
-    # 2. 同步写入 .env 文件
-    try:
-        update_env_file({
-            "TELEGRAM_BOT_TOKEN": token,
-            "TELEGRAM_ALLOWED_CHAT_IDS": chat_ids,
-            "TELEGRAM_API_BASE": api_base
-        })
-    except Exception as e:
-        logger.warning("Failed to sync .env file: %s", e)
-
-    # 3. 动态更新内存与重载 Telegram 协程监听
+    # 2. 动态更新内存与重载 Telegram 协程监听
     await telegram_notifier.reload_config(token, chat_ids, api_base)
 
     return {

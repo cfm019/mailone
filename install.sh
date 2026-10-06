@@ -146,7 +146,7 @@ if [[ ! -f "${INSTALL_DIR}/.env" ]]; then
   sed -i "s|SECRET_KEY=.*|SECRET_KEY=${RANDOM_SECRET}|g" "${INSTALL_DIR}/.env" || true
   
   success "已自动生成 .env 配置文件"
-  warn "提示：如需启用 Telegram 推送或修改公网域名，请编辑 ${INSTALL_DIR}/.env"
+  warn "提示：公网域名可在 ${INSTALL_DIR}/.env 中配置；Telegram 推送直接在网页端【系统设置】配置即可"
 else
   info "保留已有的 .env 配置文件（不覆盖）"
 fi

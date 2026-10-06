@@ -148,23 +148,12 @@ async def init_db():
             cursor = await db.execute("SELECT key, value FROM system_settings")
             rows = await cursor.fetchall()
             db_settings = {r[0]: r[1] for r in rows}
-            if "telegram_bot_token" in db_settings and db_settings["telegram_bot_token"]:
-                settings.TELEGRAM_BOT_TOKEN = db_settings["telegram_bot_token"]
-            if "telegram_allowed_chat_ids" in db_settings and db_settings["telegram_allowed_chat_ids"]:
-                settings.TELEGRAM_ALLOWED_CHAT_IDS = db_settings["telegram_allowed_chat_ids"]
+            if "telegram_bot_token" in db_settings:
+                settings.TELEGRAM_BOT_TOKEN = db_settings["telegram_bot_token"] or ""
+            if "telegram_allowed_chat_ids" in db_settings:
+                settings.TELEGRAM_ALLOWED_CHAT_IDS = db_settings["telegram_allowed_chat_ids"] or ""
             if "telegram_api_base" in db_settings and db_settings["telegram_api_base"]:
                 settings.TELEGRAM_API_BASE = db_settings["telegram_api_base"]
-
-            # 双向持久化：若数据库中已配置，顺手同步写回 .env
-            if settings.TELEGRAM_BOT_TOKEN and settings.TELEGRAM_ALLOWED_CHAT_IDS:
-                try:
-                    update_env_file({
-                        "TELEGRAM_BOT_TOKEN": settings.TELEGRAM_BOT_TOKEN,
-                        "TELEGRAM_ALLOWED_CHAT_IDS": settings.TELEGRAM_ALLOWED_CHAT_IDS,
-                        "TELEGRAM_API_BASE": settings.TELEGRAM_API_BASE or "https://api.telegram.org"
-                    })
-                except Exception as env_err:
-                    logger.debug("Syncing .env on startup skipped: %s", env_err)
         except Exception as e:
             logger.warning("Failed to load system_settings from DB: %s", e)
 
@@ -187,40 +176,10 @@ async def get_system_setting(key: str, default: str = "") -> str:
         return row["value"] if row else default
 
 async def set_system_setting(key: str, value: str):
-    """持久化保存单项系统设置"""
+    """持久化保存单项系统设置到 SQLite"""
     async with get_db() as db:
         await db.execute(
             "INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             (key, value)
         )
         await db.commit()
-
-def update_env_file(updates: dict[str, str]):
-    """将配置变更增量写回 .env 文件以保持持久一致"""
-    env_path = BASE_DIR / ".env"
-    if not env_path.exists():
-        example_path = BASE_DIR / ".env.example"
-        if example_path.exists():
-            import shutil
-            shutil.copy(example_path, env_path)
-        else:
-            env_path.touch()
-
-    lines = env_path.read_text(encoding="utf-8").splitlines()
-    new_lines = []
-    keys_updated = set()
-    for line in lines:
-        stripped = line.strip()
-        if stripped and not stripped.startswith("#") and "=" in stripped:
-            k = stripped.split("=", 1)[0].strip()
-            if k in updates:
-                new_lines.append(f"{k}={updates[k]}")
-                keys_updated.add(k)
-                continue
-        new_lines.append(line)
-
-    for k, v in updates.items():
-        if k not in keys_updated:
-            new_lines.append(f"{k}={v}")
-
-    env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")

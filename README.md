@@ -42,8 +42,7 @@ sudo bash install.sh
 ```
 
 - **安装目录**：程序默认安装在 `/opt/mailone`。
-- **安全监听**：服务默认安全监听在 `127.0.0.1:11001`（本地回环地址，不直接向公网暴露明文端口）。
-- **修改配置**：如需配置域名或 Telegram Bot，直接编辑 `/opt/mailone/.env`，然后执行 `sudo systemctl restart mailone` 即可生效。
+- **修改配置**：如需配置公网域名，直接编辑 `/opt/mailone/.env`；Telegram Bot 推送直接在网页端【系统设置 ➔ Telegram 推送】中图形化配置并热生效。
 - **后续更新**：再次在安装目录下执行 `sudo bash install.sh`，脚本会自动拉取 GitHub 最新版本、更新依赖并平滑重启服务，同时安全保留现有的 `.env` 配置与 `data/` 邮件数据。
 
 ---
@@ -106,11 +105,8 @@ server {
    ```ini
    # 外部公网访问域名（用于在 TG 消息里生成可点击的免密链接）
    BASE_URL=https://mail.yourdomain.com:8000
-
-   # Telegram Bot 配置
-   TELEGRAM_BOT_TOKEN=123456789:ABCdefGHI...
-   TELEGRAM_ALLOWED_CHAT_IDS=987654321
    ```
+   > Telegram Bot 推送无需在 `.env` 配置，直接在网页端【系统设置 ➔ Telegram 推送】填入即可。
 
 3. 一键启动容器：
    ```bash
@@ -156,8 +152,9 @@ server {
 
 1. 在 Telegram 中找到 [@BotFather](https://t.me/BotFather)，发送 `/newbot`，按提示创建一个 Bot 并保存得到的 **API Token**。
 2. 找到 [@userinfobot](https://t.me/userinfobot) 或 [@getidsbot](https://t.me/getidsbot)，获取你的个人数字 **Chat ID**。
-3. 将两者填入 `.env` 中的 `TELEGRAM_BOT_TOKEN` 和 `TELEGRAM_ALLOWED_CHAT_IDS`。
-4. 部署后，可在 Web 面板的【设置 -> Telegram Bot 推送诊断】中点击“发送测试消息”验证是否连通。
+3. 登录 MailOne 网页端，点击左下角【系统设置 ➔ Telegram 推送】。
+4. 填入 Bot Token、Chat ID（若服务器在大陆需代理可填写反代 API），点击“保存并应用”，配置将持久化保存并即时热生效。
+5. 在界面上点击“发送测试消息”验证连通性，也可在 Telegram 中向 Bot 发送 `/start` 或 `/recent` 与机器人交互。
 
 ---
 
