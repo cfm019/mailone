@@ -326,14 +326,14 @@ function updateRemoteHistoryBtn() {
     const runtimeStatus = accountHistoryStatus[currentAccountId];
 
     if (acc && (acc.history_exhausted || (runtimeStatus && runtimeStatus.hasMore === false))) {
-      textSpan.textContent = '远端历史已完整';
+      textSpan.textContent = '历史已完整';
       remoteCheckBtn.disabled = true;
       remoteCheckBtn.classList.add('disabled');
       return;
     }
 
     if (runtimeStatus && runtimeStatus.remaining !== undefined) {
-      textSpan.textContent = `加载更早历史 (剩余 ${runtimeStatus.remaining} 封)`;
+      textSpan.textContent = `更早历史 (余 ${runtimeStatus.remaining})`;
       remoteCheckBtn.disabled = false;
       remoteCheckBtn.classList.remove('disabled');
       return;
@@ -346,14 +346,14 @@ function updateRemoteHistoryBtn() {
     });
 
     if (allExhausted) {
-      textSpan.textContent = '远端历史已完整';
+      textSpan.textContent = '历史已完整';
       remoteCheckBtn.disabled = true;
       remoteCheckBtn.classList.add('disabled');
       return;
     }
   }
 
-  textSpan.textContent = '加载更早历史邮件';
+  textSpan.textContent = '更早历史';
   remoteCheckBtn.disabled = false;
   remoteCheckBtn.classList.remove('disabled');
 }
@@ -641,7 +641,7 @@ document.addEventListener('DOMContentLoaded', () => {
     remoteCheckBtn.addEventListener('click', async () => {
       remoteCheckBtn.disabled = true;
       const textSpan = document.getElementById('remote-history-text');
-      if (textSpan) textSpan.textContent = '正在检测远端历史...';
+      if (textSpan) textSpan.textContent = '正在拉取...';
 
       try {
         const url = currentAccountId

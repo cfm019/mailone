@@ -738,6 +738,8 @@ body {
   gap: 6px;
   cursor: pointer;
   transition: var(--transition);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .btn-check-remote:hover {
