@@ -197,40 +197,33 @@
 
         <!-- 详情内容区 -->
         <div id="detail-content-wrapper" style="display: none; height: 100%; flex-direction: column;">
-          <div class="detail-header-bar">
-            <div class="detail-nav-buttons">
-              <button class="btn-nav-back" id="btn-back-to-list" title="返回邮件列表">
-                <svg class="icon" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-                <span>返回</span>
-              </button>
-              <button class="btn-nav-folder" id="btn-detail-open-sidebar" title="查看邮箱与分类">
-                <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-                <span>邮箱分类</span>
-              </button>
-            </div>
-
-            <div class="mail-action-toolbar" id="mail-action-toolbar">
-              <button class="btn-icon btn-mail-action" id="btn-detail-star" title="标星/取消">
-                <svg class="icon icon-star" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              </button>
-              <button class="btn-icon btn-mail-action" id="btn-detail-unread" title="设为未读">
-                <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-              </button>
-              <button class="btn-icon btn-mail-action" id="btn-detail-paper-mode" title="切换信纸明暗底色">
-                <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              </button>
-              <button class="btn-icon btn-mail-action" id="btn-detail-download-eml" title="下载 .eml 原文件">
-                <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              </button>
-              <button class="btn-icon btn-mail-action btn-mail-action-danger" id="btn-detail-trash" title="移入废纸篓">
-                <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-              </button>
-            </div>
-          </div>
-
           <div class="detail-meta-container">
             <div class="detail-title-row">
-              <h1 class="detail-title" id="detail-subject">(无主题)</h1>
+              <div class="detail-title-left">
+                <button class="btn-nav-back" id="btn-back-to-list" title="返回邮件列表">
+                  <svg class="icon" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                  <span>返回</span>
+                </button>
+                <h1 class="detail-title" id="detail-subject">(无主题)</h1>
+              </div>
+
+              <div class="mail-action-toolbar" id="mail-action-toolbar">
+                <button class="btn-icon btn-mail-action" id="btn-detail-star" title="标星/取消">
+                  <svg class="icon icon-star" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                </button>
+                <button class="btn-icon btn-mail-action" id="btn-detail-unread" title="设为未读">
+                  <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                </button>
+                <button class="btn-icon btn-mail-action" id="btn-detail-paper-mode" title="切换信纸明暗底色">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </button>
+                <button class="btn-icon btn-mail-action" id="btn-detail-download-eml" title="下载 .eml 原文件">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
+                <button class="btn-icon btn-mail-action btn-mail-action-danger" id="btn-detail-trash" title="移入废纸篓">
+                  <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
             </div>
             
             <div class="detail-sender-row">
@@ -241,15 +234,21 @@
                   <span class="sender-email-address" id="detail-from-address">sender@example.com</span>
                 </div>
               </div>
-              <span class="detail-date-badge" id="detail-date">2026-10-06 10:00</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="detail-has-att-tag" id="detail-has-att" style="display: none;">
+                  <svg class="icon" style="width:12px;height:12px;" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                  <span>含附件</span>
+                </span>
+                <span class="detail-date-badge" id="detail-date">2026-10-06 10:00</span>
+              </div>
             </div>
           </div>
 
-          <!-- 附件列表展示条 -->
-          <div class="attachments-container" id="detail-attachments-box" style="display: none;"></div>
-
-          <!-- HTML 正文阅读区 -->
+          <!-- HTML 正文阅读区 (正文在上方优先展示) -->
           <div class="detail-body-container" id="detail-body-container"></div>
+
+          <!-- 附件列表展示条 (沉底展示) -->
+          <div class="attachments-container" id="detail-attachments-box" style="display: none;"></div>
         </div>
       </main>
     </div>

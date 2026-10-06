@@ -350,11 +350,20 @@ async function loadMailDetail(mailId) {
       }
     }
 
-    // 附件展示
+    // 附件展示 (沉底渲染，正文优先)
     const attBox = document.getElementById('detail-attachments-box');
+    const attTag = document.getElementById('detail-has-att');
     if (currentMailDetail.attachments && currentMailDetail.attachments.length > 0) {
+      if (attTag) attTag.style.display = 'inline-flex';
       attBox.style.display = 'flex';
-      attBox.innerHTML = '';
+      attBox.innerHTML = `
+        <div class="attachments-header">
+          <svg class="icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          <span>附件列表 (${currentMailDetail.attachments.length} 个)</span>
+        </div>
+        <div class="attachments-list"></div>
+      `;
+      const listEl = attBox.querySelector('.attachments-list');
       currentMailDetail.attachments.forEach((att, idx) => {
         const link = document.createElement('a');
         link.className = 'attachment-pill';
@@ -365,9 +374,10 @@ async function loadMailDetail(mailId) {
           <span>${escapeHtml(att.filename)}</span>
           <small style="color:var(--text-muted)">(${formatBytes(att.size)})</small>
         `;
-        attBox.appendChild(link);
+        listEl.appendChild(link);
       });
     } else {
+      if (attTag) attTag.style.display = 'none';
       attBox.style.display = 'none';
     }
 

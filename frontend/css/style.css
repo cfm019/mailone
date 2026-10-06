@@ -775,38 +775,64 @@ body {
   opacity: 0.35;
 }
 
-.detail-header-bar {
-  padding: 10px 20px;
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-}
-
-.detail-nav-buttons {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.btn-nav-back, .btn-nav-folder {
+.btn-nav-back {
   display: none;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   background: transparent;
   border: 1px solid var(--border-color);
   border-radius: 16px;
-  padding: 5px 12px;
-  font-size: 13px;
+  padding: 4px 10px;
+  font-size: 12.5px;
   color: var(--text-secondary);
   cursor: pointer;
+  flex-shrink: 0;
+}
+
+.btn-nav-back:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.detail-meta-container {
+  padding: 14px 20px 14px 20px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.detail-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.detail-title-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.detail-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+  word-break: break-word;
+  margin: 0;
 }
 
 .mail-action-toolbar {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .btn-mail-action {
@@ -824,21 +850,6 @@ body {
   background-color: rgba(179, 38, 30, 0.1);
 }
 
-.detail-meta-container {
-  padding: 16px 24px;
-  border-bottom: 1px solid var(--border-subtle);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.detail-title {
-  font-size: 19px;
-  font-weight: 600;
-  color: var(--text-primary);
-  line-height: 1.4;
-}
-
 .detail-sender-row {
   display: flex;
   align-items: center;
@@ -853,8 +864,8 @@ body {
 }
 
 .avatar-circle {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background-color: var(--primary);
   color: #fff;
@@ -862,25 +873,38 @@ body {
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 16px;
+  font-size: 14px;
   user-select: none;
+  flex-shrink: 0;
 }
 
 .sender-names {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .sender-display-name {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .sender-email-address {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--text-muted);
+}
+
+.detail-has-att-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  padding: 2px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
 }
 
 .detail-date-badge {
@@ -889,11 +913,27 @@ body {
   white-space: nowrap;
 }
 
-/* 附件区域 */
+/* 附件区域（位于邮件正文底部） */
 .attachments-container {
-  padding: 10px 24px;
-  background-color: var(--bg-hover);
-  border-bottom: 1px solid var(--border-subtle);
+  padding: 14px 20px 20px 20px;
+  background-color: var(--bg-app);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.attachments-header {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.attachments-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
