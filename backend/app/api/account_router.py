@@ -230,6 +230,22 @@ async def delete_account(account_id: int, user: dict = Depends(get_current_user)
         "deleted_emails_count": deleted_mails_count
     }
 
+@router.post("/sync-all")
+async def trigger_sync_all_accounts(user: dict = Depends(get_current_user)):
+    """立即手动触发所有活跃邮箱的即时同步检查"""
+    async with get_db() as db:
+        cursor = await db.execute("SELECT id FROM accounts WHERE is_active = 1")
+        rows = await cursor.fetchall()
+    for r in rows:
+        asyncio.create_task(sync_manager.trigger_sync(r["id"]))
+    return {"message": "已触发全部邮箱同步任务"}
+
+@router.post("/fetch-more-history-all")
+async def fetch_more_history_all_accounts(user: dict = Depends(get_current_user)):
+    """为所有活跃邮箱各拉取一批（30封）更早的历史邮件"""
+    res = await sync_manager.fetch_more_history_all(count=30)
+    return res
+
 @router.post("/{account_id}/sync")
 async def trigger_account_sync(account_id: int, user: dict = Depends(get_current_user)):
     """立即手动触发一次增量同步检查"""
@@ -248,11 +264,5 @@ async def fetch_more_account_history(account_id: int, user: dict = Depends(get_c
     res = await sync_manager.fetch_more_history(account_id, count=50)
     if not res.get("success", False):
         raise HTTPException(status_code=500, detail=res.get("error", "拉取历史邮件失败"))
-    return res
-
-@router.post("/fetch-more-history-all")
-async def fetch_more_history_all_accounts(user: dict = Depends(get_current_user)):
-    """为所有活跃邮箱各拉取一批（30封）更早的历史邮件"""
-    res = await sync_manager.fetch_more_history_all(count=30)
     return res
 

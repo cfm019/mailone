@@ -525,9 +525,31 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // 刷新按钮 (顶栏、移动端)
-  document.getElementById('btn-refresh-list').addEventListener('click', () => loadEmails(currentPage));
+  const handleRefresh = async () => {
+    const btn = document.getElementById('btn-refresh-list');
+    if (btn) {
+      btn.style.transform = 'rotate(360deg)';
+      btn.style.transition = 'transform 0.5s ease';
+    }
+    try {
+      if (currentAccountId) {
+        fetch(`/api/accounts/${currentAccountId}/sync`, { method: 'POST' }).catch(() => {});
+      } else {
+        fetch('/api/accounts/sync-all', { method: 'POST' }).catch(() => {});
+      }
+      await loadEmails(currentPage);
+    } finally {
+      setTimeout(() => {
+        if (btn) {
+          btn.style.transition = 'none';
+          btn.style.transform = 'none';
+        }
+      }, 500);
+    }
+  };
+  document.getElementById('btn-refresh-list').addEventListener('click', handleRefresh);
   const mobileRefresh = document.getElementById('btn-refresh-list-mobile');
-  if (mobileRefresh) mobileRefresh.addEventListener('click', () => loadEmails(currentPage));
+  if (mobileRefresh) mobileRefresh.addEventListener('click', handleRefresh);
 
   // 全部标记已读
   document.getElementById('btn-mark-all-read').addEventListener('click', async () => {

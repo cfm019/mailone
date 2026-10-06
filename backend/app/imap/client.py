@@ -186,13 +186,32 @@ class IMAPClient:
             return {}
 
         headers_map: Dict[int, bytes] = {}
+        current_uid: Optional[int] = None
+
         for item in resp.lines:
+            # 兼容标准元组格式 [(b'... UID ...', b'...'), ...]
             if isinstance(item, tuple) and len(item) == 2:
                 status_line = item[0] if isinstance(item[0], (bytes, bytearray)) else b""
                 m = re.search(rb'UID\s+(\d+)', status_line, re.IGNORECASE)
                 if m:
-                    uid = int(m.group(1))
-                    headers_map[uid] = bytes(item[1])
+                    headers_map[int(m.group(1))] = bytes(item[1])
+                continue
+
+            # 兼容 aioimaplib 的扁平字节/字面量结构：首行为带有 UID 的 FETCH 行，随行为字面量 bytearray
+            if isinstance(item, (bytes, bytearray)):
+                raw_item = bytes(item)
+                m = re.search(rb'UID\s+(\d+)', raw_item, re.IGNORECASE)
+                if m and (b'FETCH' in raw_item or b'{' in raw_item):
+                    current_uid = int(m.group(1))
+                    continue
+
+                if current_uid is not None:
+                    # 忽略协议闭合括号行或结束标记
+                    if raw_item == b')' or b'completed' in raw_item.lower() or b'success' in raw_item.lower():
+                        current_uid = None
+                        continue
+                    headers_map[current_uid] = raw_item
+                    current_uid = None
 
         return headers_map
 

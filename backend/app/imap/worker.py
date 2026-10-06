@@ -96,8 +96,14 @@ class SyncManager:
 
         try:
             client = await client_wrapper.connect()
+            # 检查本地是否已有该账号的邮件
+            has_local_emails = False
+            async with get_db() as db:
+                c = await db.execute("SELECT 1 FROM emails WHERE account_id = ? LIMIT 1", (account_id,))
+                has_local_emails = (await c.fetchone()) is not None
+
             last_uid = account["last_uid"] or 0
-            is_initial = (last_uid == 0)
+            is_initial = (last_uid == 0 or not has_local_emails)
 
             # 查询新邮件 UID 列表
             if is_initial:
@@ -163,7 +169,11 @@ class SyncManager:
                         await db.commit()
 
                 # 记录最大 UID 为整个邮箱的当前最新 UID，自此之后的任何新到邮件立刻走秒级增量推送
-                max_uid = max(sorted_uids) if sorted_uids else last_uid
+                if headers_map or not target_uids:
+                    max_uid = max(sorted_uids) if sorted_uids else last_uid
+                else:
+                    logger.warning("Initial batch fetch got 0 headers for account %s, keeping last_uid %s", account_id, last_uid)
+                    max_uid = last_uid
 
 
             else:
@@ -371,7 +381,8 @@ class SyncManager:
                 min_local_uid = row["min_uid"]
 
         if min_local_uid is None:
-            min_local_uid = 999999999
+            # 本地尚无邮件记录时，从该账户最大 UID 或 32 位无符号整数最大值开始向下查找
+            min_local_uid = (account["last_uid"] + 1) if (account["last_uid"] and account["last_uid"] > 0) else 4294967295
 
         if min_local_uid <= 1:
             return {
