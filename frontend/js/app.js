@@ -307,11 +307,8 @@ function updateListTitleAndCounter() {
     }
   }
 
-  const titleText = `${baseTitle} (${currentTotalMails} 封)`;
-  const statusText = document.getElementById('list-status-text');
   const mobileTitle = document.getElementById('mobile-header-title');
-  if (statusText) statusText.textContent = titleText;
-  if (mobileTitle) mobileTitle.textContent = titleText;
+  if (mobileTitle) mobileTitle.textContent = baseTitle;
 }
 
 // --- 邮件详情查看 ---
