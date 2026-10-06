@@ -74,7 +74,6 @@ CREATE INDEX IF NOT EXISTS idx_emails_date ON emails(date DESC);
 CREATE INDEX IF NOT EXISTS idx_emails_is_deleted ON emails(is_deleted);
 CREATE INDEX IF NOT EXISTS idx_emails_from_address ON emails(from_address);
 CREATE INDEX IF NOT EXISTS idx_emails_otp_code ON emails(otp_code);
-CREATE INDEX IF NOT EXISTS idx_emails_telegram_notified ON emails(telegram_notified);
 
 -- FTS5 全文搜索虚拟表
 CREATE VIRTUAL TABLE IF NOT EXISTS emails_fts USING fts5(
