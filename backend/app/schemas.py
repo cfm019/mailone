@@ -17,9 +17,13 @@ class LoginResponse(BaseModel):
 class SetupTOTPResponse(BaseModel):
     secret: str
     qr_code_data_url: str
+    qr_uri: Optional[str] = None
 
 class VerifyTOTPRequest(BaseModel):
-    secret: str
+    code: str
+    secret: Optional[str] = None
+
+class DisableTOTPRequest(BaseModel):
     code: str
 
 # --- 账户相关 ---

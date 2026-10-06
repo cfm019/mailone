@@ -542,35 +542,34 @@ body {
   border-bottom: 1px solid var(--border-color);
   background-color: var(--bg-surface);
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.mobile-list-header {
-  display: none;
   align-items: center;
-  justify-content: space-between;
-  padding-bottom: 4px;
+  flex-shrink: 0;
 }
 
 .list-actions-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
 }
 
 .actions-bar-left {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 
 .list-view-title {
-  font-size: 14px;
+  font-size: 14.5px;
   font-weight: 600;
   color: var(--text-primary);
-  margin-left: 4px;
+  margin-right: 4px;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: -0.2px;
 }
 
 /* Gmail 经典翻页器 (Pagination Widget) */
@@ -832,35 +831,40 @@ body {
   flex-shrink: 0;
 }
 
-.detail-title-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.detail-title-left {
+.detail-toolbar-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
 }
 
-.detail-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  line-height: 1.4;
-  word-break: break-word;
-  margin: 0;
+.detail-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .mail-action-toolbar {
   display: flex;
   align-items: center;
   gap: 4px;
+  margin-left: auto;
   flex-shrink: 0;
+}
+
+.detail-subject-row {
+  width: 100%;
+}
+
+.detail-title {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+  word-break: break-word;
+  margin: 0;
+  letter-spacing: -0.2px;
 }
 
 .btn-mail-action {
@@ -1221,8 +1225,18 @@ body {
     min-width: 100%;
   }
 
-  .mobile-list-header {
-    display: flex;
+  .list-topbar {
+    padding: 8px 12px;
+  }
+
+  .detail-meta-container {
+    padding: 10px 14px 12px 14px;
+    gap: 10px;
+  }
+
+  .detail-title {
+    font-size: 17px;
+    line-height: 1.35;
   }
 
   .mail-detail-panel {

@@ -314,8 +314,8 @@ function updateListTitleAndCounter() {
     }
   }
 
-  const mobileTitle = document.getElementById('mobile-header-title');
-  if (mobileTitle) mobileTitle.textContent = baseTitle;
+  const listTitle = document.getElementById('list-header-title') || document.getElementById('mobile-header-title');
+  if (listTitle) listTitle.textContent = baseTitle;
 }
 
 // --- 更新底部远端历史拉取按钮状态 ---
@@ -586,16 +586,28 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 全量即时同步所有邮箱
+  // 全量即时同步所有邮箱（已移动至设置弹窗，并增加二次确认与防误触保护）
   const syncAllBtn = document.getElementById('btn-sync-all');
   if (syncAllBtn) {
     syncAllBtn.addEventListener('click', async () => {
+      if (!confirm('全量同步将同时连接所有已绑定的邮箱服务器检查新邮件，确定执行吗？')) return;
+      syncAllBtn.disabled = true;
+      const textEl = document.getElementById('btn-sync-all-text');
+      const originalText = textEl ? textEl.textContent : '';
+      if (textEl) textEl.textContent = '同步触发中...';
       showToast('正在向各邮箱服务器触发增量同步...', 'info');
-      for (const acc of accountsData) {
-        await fetch(`/api/accounts/${acc.id}/sync`, { method: 'POST' });
+      try {
+        await fetch('/api/accounts/sync-all', { method: 'POST' });
+        setTimeout(loadAccounts, 1500);
+        setTimeout(() => loadEmails(1), 2500);
+      } catch (err) {
+        showToast('同步请求失败', 'error');
+      } finally {
+        setTimeout(() => {
+          syncAllBtn.disabled = false;
+          if (textEl) textEl.textContent = originalText;
+        }, 3000);
       }
-      setTimeout(loadAccounts, 2000);
-      setTimeout(() => loadEmails(1), 3000);
     });
   }
 
@@ -959,7 +971,8 @@ async function loadTotpStatus() {
     const manageBtn = document.getElementById('btn-manage-totp');
     const setupArea = document.getElementById('totp-setup-area');
 
-    if (user.totp_enabled) {
+    const isEnabled = !!(user.is_totp_enabled ?? user.totp_enabled);
+    if (isEnabled) {
       statusText.textContent = '两步验证已启用 (受保护状态)';
       statusText.style.color = 'var(--success)';
       manageBtn.textContent = '关闭 2FA';
@@ -978,13 +991,41 @@ async function startSetupTotp() {
   try {
     const res = await fetch('/api/auth/setup-totp', { method: 'POST' });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail);
+    if (!res.ok) throw new Error(data.detail || '获取 2FA 配置失败');
 
-    document.getElementById('totp-qr-img').src = data.qr_uri;
+    const qrSrc = data.qr_code_data_url || data.qr_uri;
+    const qrImg = document.getElementById('totp-qr-img');
+    if (qrImg && qrSrc) {
+      qrImg.src = qrSrc;
+    }
+
+    const secretText = document.getElementById('totp-secret-text');
+    if (secretText) {
+      secretText.textContent = data.secret || '';
+    }
+
+    const copyBtn = document.getElementById('btn-copy-totp-secret');
+    if (copyBtn) {
+      copyBtn.onclick = () => {
+        if (!data.secret) return;
+        navigator.clipboard.writeText(data.secret).then(() => {
+          showToast('密钥已复制到剪贴板', 'success');
+        }).catch(() => {
+          showToast('请手动复制密钥', 'info');
+        });
+      };
+    }
+
+    const verifyInput = document.getElementById('totp-verify-input');
+    if (verifyInput) {
+      verifyInput.value = '';
+    }
+
     document.getElementById('totp-setup-area').style.display = 'block';
 
     document.getElementById('btn-confirm-totp').onclick = async () => {
-      const code = document.getElementById('totp-verify-input').value.trim();
+      const rawCode = document.getElementById('totp-verify-input').value.trim();
+      const code = rawCode.replace(/\s+/g, '');
       if (!code || code.length !== 6) {
         showToast('请输入 6 位有效动态口令', 'error');
         return;
@@ -994,35 +1035,38 @@ async function startSetupTotp() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ secret: data.secret, code })
       });
+      const verifyData = await verifyRes.json();
       if (verifyRes.ok) {
         showToast('两步验证配置成功！', 'success');
         await loadTotpStatus();
       } else {
-        showToast('验证码不正确，请重新输入', 'error');
+        showToast(verifyData.detail || '验证码不正确，请重新输入', 'error');
       }
     };
   } catch (e) {
-    showToast(e.message, 'error');
+    showToast(e.message || '获取 2FA 配置失败', 'error');
   }
 }
 
 async function disableTotp() {
   const code = prompt('请输入当前的 6 位动态口令以确认关闭 2FA：');
   if (!code) return;
+  const cleanCode = code.trim().replace(/\s+/g, '');
   try {
     const res = await fetch('/api/auth/disable-totp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code })
+      body: JSON.stringify({ code: cleanCode })
     });
+    const data = await res.json();
     if (res.ok) {
       showToast('两步验证已关闭', 'info');
       await loadTotpStatus();
     } else {
-      showToast('口令错误，关闭失败', 'error');
+      showToast(data.detail || '口令错误，关闭失败', 'error');
     }
   } catch (e) {
-    showToast(e.message, 'error');
+    showToast('网络错误，关闭 2FA 失败', 'error');
   }
 }
 

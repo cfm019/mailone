@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from backend.app.database import get_db
-from backend.app.schemas import LoginRequest, LoginResponse, SetupTOTPResponse, VerifyTOTPRequest
+from backend.app.schemas import LoginRequest, LoginResponse, SetupTOTPResponse, VerifyTOTPRequest, DisableTOTPRequest
 from backend.app.auth import (
     hash_password, verify_password, create_access_token,
     generate_totp_secret, verify_totp, generate_totp_qr_base64,
@@ -111,6 +111,7 @@ async def get_me(user: dict = Depends(get_current_user)):
         "id": row["id"],
         "username": row["username"],
         "is_totp_enabled": bool(row["is_totp_enabled"]),
+        "totp_enabled": bool(row["is_totp_enabled"]),
         "created_at": row["created_at"]
     }
 
@@ -120,13 +121,16 @@ async def setup_totp(user: dict = Depends(get_current_user)):
     username = user.get("sub")
     secret = generate_totp_secret()
     qr_data_url = generate_totp_qr_base64(username, secret)
-    return SetupTOTPResponse(secret=secret, qr_code_data_url=qr_data_url)
+    return SetupTOTPResponse(secret=secret, qr_code_data_url=qr_data_url, qr_uri=qr_data_url)
 
 @router.post("/verify-totp")
 async def verify_and_enable_totp(req: VerifyTOTPRequest, user: dict = Depends(get_current_user)):
     """校验并开启 2FA"""
     username = user.get("sub")
-    if not verify_totp(req.secret, req.code):
+    if not req.secret:
+        raise HTTPException(status_code=400, detail="缺少密钥参数")
+    clean_code = req.code.strip().replace(" ", "")
+    if not verify_totp(req.secret, clean_code):
         raise HTTPException(status_code=400, detail="验证码错误，无法启用 2FA")
 
     async with get_db() as db:
@@ -139,16 +143,17 @@ async def verify_and_enable_totp(req: VerifyTOTPRequest, user: dict = Depends(ge
     return {"message": "两步验证 (2FA) 启用成功！"}
 
 @router.post("/disable-totp")
-async def disable_totp(req: VerifyTOTPRequest, user: dict = Depends(get_current_user)):
+async def disable_totp(req: DisableTOTPRequest, user: dict = Depends(get_current_user)):
     """关闭 2FA"""
     username = user.get("sub")
+    clean_code = req.code.strip().replace(" ", "")
     async with get_db() as db:
         cursor = await db.execute("SELECT totp_secret FROM users WHERE username = ?", (username,))
         row = await cursor.fetchone()
         if not row or not row["totp_secret"]:
             raise HTTPException(status_code=400, detail="未开启 2FA")
 
-        if not verify_totp(row["totp_secret"], req.code):
+        if not verify_totp(row["totp_secret"], clean_code):
             raise HTTPException(status_code=400, detail="验证码错误，无法关闭 2FA")
 
         await db.execute(
