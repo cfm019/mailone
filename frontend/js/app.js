@@ -602,7 +602,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const mobileRefresh = document.getElementById('btn-refresh-list-mobile');
   if (mobileRefresh) mobileRefresh.addEventListener('click', handleRefresh);
 
-  // 全部标记已读
+  // 标记当前页为已读
   document.getElementById('btn-mark-all-read').addEventListener('click', async () => {
     const cards = document.querySelectorAll('.mail-card.unread');
     const ids = Array.from(cards).map(c => parseInt(c.dataset.id));
@@ -611,29 +611,12 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const unreadEl = document.getElementById('badge-total-unread');
-    const totalUnread = parseInt(unreadEl ? unreadEl.textContent : '0') || ids.length;
-
-    if (totalUnread > ids.length) {
-      const confirmAll = confirm(`当前视图共有 ${totalUnread} 封未读邮件（当前页 ${ids.length} 封）。\n\n点击“确定”：将全部 ${totalUnread} 封未读邮件标记为已读\n点击“取消”：仅将当前页 ${ids.length} 封标记为已读`);
-      if (confirmAll) {
-        const params = new URLSearchParams({ view: currentView });
-        if (currentAccountId) params.append('account_id', currentAccountId);
-        const res = await fetch(`/api/mails/mark-all-read?${params.toString()}`, { method: 'POST' });
-        const data = await res.json();
-        showToast(data.message || '已全部标记为已读', 'success');
-        await loadEmails(currentPage);
-        await loadAccounts();
-        return;
-      }
-    }
-
     await fetch('/api/mails/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email_ids: ids, action: 'read' })
     });
-    showToast('已将当前页标记为已读', 'success');
+    showToast(`已将当前页 ${ids.length} 封邮件标记为已读`, 'success');
     await loadEmails(currentPage);
     await loadAccounts();
   });
