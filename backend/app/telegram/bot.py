@@ -2,12 +2,32 @@ import asyncio
 import logging
 import html
 import httpx
+from datetime import datetime
 from typing import Optional, List
 from backend.app.config import settings
 from backend.app.auth import create_magic_link_token
 from backend.app.database import get_db
 
 logger = logging.getLogger("mailone.telegram")
+
+def _format_friendly_date(date_val) -> str:
+    if not date_val:
+        return ""
+    try:
+        if isinstance(date_val, str):
+            clean_str = date_val.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(clean_str)
+        else:
+            dt = date_val
+        now = datetime.now(dt.tzinfo) if dt.tzinfo else datetime.now()
+        if dt.date() == now.date():
+            return dt.strftime("%H:%M")
+        elif dt.year == now.year:
+            return dt.strftime("%m-%d %H:%M")
+        else:
+            return dt.strftime("%Y-%m-%d")
+    except Exception:
+        return str(date_val)[:16].replace("T", " ")
 
 class TelegramNotifier:
     def __init__(self):
@@ -113,7 +133,7 @@ class TelegramNotifier:
             await self._send_raw_message(chat_id, "✅ 邮箱检查任务已触发！", client)
 
     async def _handle_recent_command(self, chat_id: int, client: httpx.AsyncClient):
-        """处理 /recent 指令，返回最近邮件卡片"""
+        """处理 /recent 指令，返回精致的列表超链接（无大按钮）"""
         async with get_db() as db:
             cursor = await db.execute(
                 """
@@ -132,22 +152,25 @@ class TelegramNotifier:
             await self._send_raw_message(chat_id, "📭 当前暂无邮件记录", client)
             return
 
-        lines = ["📬 <b>最近邮件列表：</b>\n"]
-        inline_keyboard = []
+        lines = ["📬 <b>最近邮件</b>\n"]
 
         for idx, r in enumerate(rows, start=1):
-            s_name = r["from_name"] or r["from_address"]
+            s_name = r["from_name"] or r["from_address"].split("@")[0]
+            if len(s_name) > 22:
+                s_name = s_name[:20] + "…"
             s_subj = r["subject"] or "(无主题)"
-            date_str = str(r["date"])[:16]
-            lines.append(f"{idx}. <b>[{html.escape(r['account_name'])}]</b> {html.escape(s_subj)}")
-            lines.append(f"   👤 {html.escape(s_name)} | ⏱️ {date_str}\n")
+            date_str = _format_friendly_date(r["date"])
 
             magic_token = create_magic_link_token(r["id"])
             magic_url = f"{settings.BASE_URL.rstrip('/')}/view.html?id={r['id']}&token={magic_token}"
-            inline_keyboard.append([{"text": f"📖 阅览 #{idx} ({html.escape(s_name[:12])})", "url": magic_url}])
 
-        reply_markup = {"inline_keyboard": inline_keyboard}
-        await self._send_raw_message(chat_id, "\n".join(lines), client, reply_markup=reply_markup)
+            lines.append(
+                f"{idx}. <a href=\"{magic_url}\"><b>{html.escape(s_subj)}</b></a>\n"
+                f"   <i>{html.escape(s_name)}</i> · <code>{html.escape(r['account_name'])}</code> · {date_str}\n"
+            )
+
+        # 彻底移除 inline_keyboard 按钮，仅以精致纯文本超链接展现
+        await self._send_raw_message(chat_id, "\n".join(lines).strip(), client)
 
     async def _handle_status_command(self, chat_id: int, client: httpx.AsyncClient):
         """处理 /status 指令，返回系统统计"""
@@ -201,41 +224,43 @@ class TelegramNotifier:
         snippet: str,
         otp_code: Optional[str] = None
     ) -> bool:
-        """向配置的 Telegram Chat 发送新到达邮件通知"""
+        """向配置的 Telegram Chat 发送新到达邮件通知（紧凑无按钮卡片）"""
         if not self.is_configured:
             return False
 
-        sender_display = f"{from_name} &lt;{from_address}&gt;" if from_name else from_address
-        escaped_sender = html.escape(sender_display)
-        escaped_subject = html.escape(subject or "(无主题)")
         escaped_account = html.escape(account_name)
-        escaped_snippet = html.escape(snippet)
+        escaped_subject = html.escape(subject or "(无主题)")
+
+        # 发信人：统一单次转义，格式化为更友好的 "发件人 (邮箱)" 或 "邮箱"
+        if from_name and from_name.strip() and from_name.strip() != from_address.strip():
+            sender_display = f"{html.escape(from_name.strip())} ({html.escape(from_address.strip())})"
+        else:
+            sender_display = html.escape(from_address.strip())
 
         magic_token = create_magic_link_token(mail_id)
         magic_url = f"{settings.BASE_URL.rstrip('/')}/view.html?id={mail_id}&token={magic_token}"
 
-        lines = []
-        lines.append(f"📬 <b>[{escaped_account}] 新邮件到达</b>")
-        lines.append(f"👤 <b>发件人:</b> {escaped_sender}")
-        lines.append(f"📋 <b>主题:</b> {escaped_subject}")
+        # 压缩卡片排布，少 emoji，标题即标题，紧接小字发件人
+        lines = [
+            f"📬 <b>[{escaped_account}] {escaped_subject}</b>",
+            f"<i>From: {sender_display}</i>"
+        ]
 
+        # 验证码快速提取（如有）
         if otp_code:
-            lines.append("")
-            lines.append(f"🔑 <b>验证码 / Code:</b>")
-            lines.append(f"<code>{html.escape(otp_code)}</code>  <i>(点击复制)</i>")
+            lines.append(f"🔑 验证码: <code>{html.escape(otp_code)}</code>")
 
-        if escaped_snippet:
-            lines.append("")
-            lines.append(f"📝 <b>摘要:</b>")
-            lines.append(f"<i>{escaped_snippet}</i>")
+        # 紧随正文摘要（去除多余标签名，小字斜体呈现）
+        if snippet and snippet.strip():
+            clean_snippet = snippet.strip()[:260]
+            if len(snippet.strip()) > 260:
+                clean_snippet += "…"
+            lines.append(f"\n<i>{html.escape(clean_snippet)}</i>")
 
-        reply_markup = {
-            "inline_keyboard": [
-                [
-                    {"text": "📖 免密查看完整邮件", "url": magic_url}
-                ]
-            ]
-        }
+        # 末尾紧接缩略文字链接，无需大按钮
+        lines.append(f"\n<a href=\"{magic_url}\">查看全文 →</a>")
+
+        text_content = "\n".join(lines)
 
         success = True
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -243,9 +268,8 @@ class TelegramNotifier:
                 url = f"{self.api_base}/bot{self.bot_token}/sendMessage"
                 payload = {
                     "chat_id": chat_id,
-                    "text": "\n".join(lines),
+                    "text": text_content,
                     "parse_mode": "HTML",
-                    "reply_markup": reply_markup,
                     "disable_web_page_preview": True
                 }
                 try:
