@@ -1,0 +1,1139 @@
+/* ==========================================================================
+   MailOne - Premium Dual-Theme Design System
+   (Warm Claude Parchment / Graphite Carbon Dark)
+   ========================================================================== */
+
+/* 1. 默认深色主题：高级石墨玄黑 (Graphite Dark - Linear/Obsidian 质感) */
+/* 1. 默认浅色主题：Claude 风格温润米黄/羊皮纸 (Warm Parchment / Claude Tone - 默认舒缓阅读体验) */
+:root, [data-theme="light"] {
+  --bg-primary: #faf7f2;         /* 暖米黄纸张底色（如未漂白素笺，温润不刺眼） */
+  --bg-secondary: #f3ede2;       /* 浅暖羊脂奶茶色侧边栏与标题栏 */
+  --bg-surface: #ffffff;         /* 纯净白卡片表面 */
+  --bg-surface-hover: #ede5d7;   /* 悬停温和浅沙色 */
+  --bg-glass: rgba(250, 247, 242, 0.88);
+  --border-color: #e6ded2;       /* 柔和书页边框 */
+  --border-focus: #c25e38;       /* Claude 陶土红 / 赤褐焦点 */
+
+  --text-primary: #2d2a26;       /* 暖炭灰文字（极舒缓深沉） */
+  --text-secondary: #6e675f;     /* 温和副文本 */
+  --text-muted: #9c9387;         /* 弱化浅灰 */
+
+  --primary: #c25e38;            /* Claude 标志性陶土暖红 */
+  --primary-hover: #ab4f2d;
+  --primary-glow: rgba(194, 94, 56, 0.18);
+  --accent: #d97757;             /* 柔和暖橙赤褐 */
+  --success: #2d7a4f;
+  --warning: #b45309;
+  --danger: #c53030;
+
+  --mail-paper-bg: #ffffff;
+  --mail-paper-text: #22201d;
+  --mail-card-selected: #f0e9dc;
+
+  --shadow-sm: 0 1px 3px rgba(45, 42, 38, 0.05);
+  --shadow-md: 0 4px 14px rgba(45, 42, 38, 0.08);
+  --shadow-lg: 0 12px 32px rgba(45, 42, 38, 0.12);
+  --shadow-glow: 0 0 16px var(--primary-glow);
+
+  --sidebar-width: 260px;
+  --list-width: 380px;
+  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 2. 深色主题：高级黑曜石玄黑 (Obsidian Graphite Dark - 拒绝廉价深蓝，Linear/Raycast 质感) */
+[data-theme="dark"] {
+  --bg-primary: #0d0e11;         /* 纯正黑曜石中性黑，彻底告别深蓝刺眼感 */
+  --bg-secondary: #131418;       /* 深石墨碳灰侧边栏与头部 */
+  --bg-surface: #1a1b21;         /* 质感深灰卡片表面 */
+  --bg-surface-hover: #23252d;   /* 悬停微亮石墨 */
+  --bg-glass: rgba(26, 27, 33, 0.85);
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-focus: #6366f1;       /* 雅致极简靛紫 */
+
+  --text-primary: #f4f4f5;       /* 柔和明亮纯净白 */
+  --text-secondary: #a1a1aa;     /* 中性锌灰 */
+  --text-muted: #71717a;         /* 弱化暗灰 */
+
+  --primary: #6366f1;            /* 优雅紫罗兰/靛青 */
+  --primary-hover: #4f46e5;
+  --primary-glow: rgba(99, 102, 241, 0.25);
+  --accent: #38bdf8;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+
+  --mail-paper-bg: #14151a;      /* 深色信纸 */
+  --mail-paper-text: #f4f4f5;    /* 明亮柔和字 */
+  --mail-card-selected: rgba(99, 102, 241, 0.14);
+
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.8);
+  --shadow-glow: 0 0 20px var(--primary-glow);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  font-size: 14px;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(150, 150, 150, 0.25);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 150, 150, 0.45);
+}
+
+/* 布局结构 */
+#app-container {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 1. 左侧边栏 */
+.sidebar {
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 12px;
+  gap: 16px;
+  z-index: 20;
+  transition: var(--transition);
+}
+
+.brand-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px 12px 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+}
+
+.logo-badge {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 16px;
+  box-shadow: var(--shadow-glow);
+}
+
+.nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 8px 8px 4px 8px;
+  letter-spacing: 0.8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.nav-item:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.nav-item.active {
+  background-color: var(--primary);
+  color: #fff;
+  box-shadow: 0 4px 12px var(--primary-glow);
+}
+
+.nav-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-item-icon {
+  font-size: 15px;
+}
+
+.badge-count {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  background-color: rgba(150, 150, 150, 0.18);
+}
+
+.nav-item.active .badge-count {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.account-color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.user-profile-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* 2. 中间邮件流列表 */
+.mail-list-panel {
+  width: var(--list-width);
+  min-width: var(--list-width);
+  background-color: var(--bg-primary);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+}
+
+.list-topbar {
+  padding: 16px 14px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.search-box-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted);
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 12px 8px 34px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: var(--transition);
+}
+
+.search-input:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+.list-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.btn-icon:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.mail-scroll-container {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* 邮件卡片 */
+.mail-card {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+
+.mail-card:hover {
+  background-color: var(--bg-surface-hover);
+}
+
+.mail-card.selected {
+  background-color: rgba(99, 102, 241, 0.1);
+  border-left: 3px solid var(--primary);
+}
+[data-theme="light"] .mail-card.selected {
+  background-color: rgba(194, 94, 56, 0.08);
+}
+
+.mail-card.unread .mail-card-sender {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.unread-indicator-dot {
+  width: 6px;
+  height: 6px;
+  background-color: var(--primary);
+  border-radius: 9999px;
+  display: inline-block;
+  margin-right: 6px;
+  box-shadow: 0 0 8px var(--primary);
+}
+
+.mail-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mail-card-sender {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mail-card-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.mail-card-subject {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mail-card-snippet {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mail-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.account-pill-badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  font-weight: 600;
+  color: #fff;
+  opacity: 0.9;
+}
+
+/* 3. 右侧详情面板 */
+.mail-detail-panel {
+  flex: 1;
+  background-color: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.empty-state-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  gap: 12px;
+}
+
+.detail-header-bar {
+  display: none; /* 桌面端隐去，邮件详情直接以标题与操作栏起步，空间更大更聚焦 */
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.detail-actions_group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-meta-container {
+  padding: 24px 28px 16px 28px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--bg-primary);
+}
+
+.detail-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.detail-title {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text-primary);
+  word-break: break-word;
+  flex: 1 1 240px;
+  margin: 0;
+}
+
+.mail-action-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 3px 5px;
+  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
+}
+
+.btn-mail-action {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 15px;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+
+.btn-mail-action:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.btn-mail-action-danger:hover {
+  color: var(--danger);
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.detail-sender-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sender-info-cluster {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  color: #fff;
+}
+
+.sender-names {
+  display: flex;
+  flex-direction: column;
+}
+
+.sender-display-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sender-email-address {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* 邮件正文沙箱区 */
+.detail-body-container {
+  flex: 1;
+  padding: 24px 28px;
+  overflow-y: auto;
+  background-color: var(--mail-paper-bg);
+  color: var(--mail-paper-text);
+  border-radius: 8px;
+  margin: 16px 28px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+  line-height: 1.6;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ==========================================================================
+   深色模式：邮件正文字体对比度智能适配
+   解决外部 HTML 邮件（如 Apple TestFlight、各大通知、账单等）
+   硬编码内联深灰/纯黑色字（如 #000, #333, #4a4a4a），导致在暗色背景下几乎完全不可见的问题。
+   ========================================================================== */
+[data-theme="dark"] .detail-body-container:not(.paper-light),
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) {
+  background-color: var(--mail-paper-bg);
+  color: var(--mail-paper-text);
+}
+
+/* 覆盖深色模式下所有文本元素的硬编码暗色字，统一提亮为高对比度清晰字 */
+[data-theme="dark"] .detail-body-container:not(.paper-light),
+[data-theme="dark"] .detail-body-container:not(.paper-light) p,
+[data-theme="dark"] .detail-body-container:not(.paper-light) span,
+[data-theme="dark"] .detail-body-container:not(.paper-light) div,
+[data-theme="dark"] .detail-body-container:not(.paper-light) td,
+[data-theme="dark"] .detail-body-container:not(.paper-light) th,
+[data-theme="dark"] .detail-body-container:not(.paper-light) li,
+[data-theme="dark"] .detail-body-container:not(.paper-light) pre,
+[data-theme="dark"] .detail-body-container:not(.paper-light) font,
+[data-theme="dark"] .detail-body-container:not(.paper-light) h1,
+[data-theme="dark"] .detail-body-container:not(.paper-light) h2,
+[data-theme="dark"] .detail-body-container:not(.paper-light) h3,
+[data-theme="dark"] .detail-body-container:not(.paper-light) h4,
+[data-theme="dark"] .detail-body-container:not(.paper-light) h5,
+[data-theme="dark"] .detail-body-container:not(.paper-light) h6,
+[data-theme="dark"] .detail-body-container:not(.paper-light) b,
+[data-theme="dark"] .detail-body-container:not(.paper-light) strong,
+[data-theme="dark"] .detail-body-container:not(.paper-light) label,
+[data-theme="dark"] .detail-body-container:not(.paper-light) blockquote,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light),
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) p,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) span,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) div,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) td,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) th,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) li,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) pre,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) font,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) h1,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) h2,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) h3,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) h4,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) h5,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) h6,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) b,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) strong,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) label,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) blockquote {
+  color: var(--mail-paper-text) !important;
+}
+
+/* 超链接：使用高亮淡靛青/天蓝色，替换暗蓝超链接 */
+[data-theme="dark"] .detail-body-container:not(.paper-light) a,
+[data-theme="dark"] .detail-body-container:not(.paper-light) a *,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) a,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) a * {
+  color: #818cf8 !important;
+  text-decoration: underline;
+}
+
+/* 深色模式下清除表格和内层容器自带的纯白/浅灰底色，与黑曜石信纸融合 */
+[data-theme="dark"] .detail-body-container:not(.paper-light) table,
+[data-theme="dark"] .detail-body-container:not(.paper-light) tbody,
+[data-theme="dark"] .detail-body-container:not(.paper-light) tr,
+[data-theme="dark"] .detail-body-container:not(.paper-light) td,
+[data-theme="dark"] .detail-body-container:not(.paper-light) th,
+[data-theme="dark"] .detail-body-container:not(.paper-light) section,
+[data-theme="dark"] .detail-body-container:not(.paper-light) article,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) table,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) tbody,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) tr,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) td,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) th,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) section,
+[data-theme="dark"] .view-body-wrapper:not(.paper-light) article {
+  background-color: transparent !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 分割线与间距线自适应深色微光 */
+[data-theme="dark"] .detail-body-container:not(.paper-light) hr,
+[data-theme="dark"] .detail-body-container:not(.paper-light) div[style*="background:#DCDEE0"],
+[data-theme="dark"] .detail-body-container:not(.paper-light) div[style*="background:#dcdee0"] {
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  background-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+/* 代码和 pre 格式块背景透明微亮 */
+[data-theme="dark"] .detail-body-container:not(.paper-light) pre,
+[data-theme="dark"] .detail-body-container:not(.paper-light) code {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border-radius: 6px;
+  color: #f4f4f5 !important;
+}
+
+/* 图片最大宽度自适应容器 */
+.detail-body-container img {
+  max-width: 100% !important;
+  height: auto;
+}
+
+/* 手动切换的浅白信纸原貌模式 (Paper Light Mode) */
+.detail-body-container.paper-light {
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+.detail-body-container.paper-light,
+.detail-body-container.paper-light p,
+.detail-body-container.paper-light span,
+.detail-body-container.paper-light div,
+.detail-body-container.paper-light td,
+.detail-body-container.paper-light th,
+.detail-body-container.paper-light li,
+.detail-body-container.paper-light pre,
+.detail-body-container.paper-light font,
+.detail-body-container.paper-light h1,
+.detail-body-container.paper-light h2,
+.detail-body-container.paper-light h3,
+.detail-body-container.paper-light h4,
+.detail-body-container.paper-light h5,
+.detail-body-container.paper-light h6,
+.detail-body-container.paper-light b,
+.detail-body-container.paper-light strong {
+  color: #1f2937 !important;
+}
+.detail-body-container.paper-light a,
+.detail-body-container.paper-light a * {
+  color: #2563eb !important;
+}
+
+.attachments-container {
+  padding: 12px 28px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+}
+
+.attachment-chip {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--text-primary);
+  font-size: 12px;
+  transition: var(--transition);
+}
+
+.attachment-chip:hover {
+  border-color: var(--primary);
+  background: var(--bg-surface-hover);
+}
+
+/* 通用按钮 */
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition);
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+  box-shadow: var(--shadow-glow);
+}
+
+.btn-secondary {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-surface-hover);
+}
+
+.btn-danger {
+  background-color: var(--danger);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition);
+}
+
+.btn-danger:hover {
+  filter: brightness(0.9);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+}
+
+.btn-edit-acc {
+  opacity: 0.5;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.nav-item:hover .btn-edit-acc {
+  opacity: 1;
+}
+
+.btn-edit-acc:hover {
+  transform: rotate(30deg);
+  opacity: 1 !important;
+}
+
+/* 模态弹窗 */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: var(--transition);
+}
+
+.modal-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  width: 90%;
+  max-width: 520px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateY(12px) scale(0.98);
+  transition: var(--transition);
+}
+
+.modal-backdrop.active .modal-card {
+  transform: translateY(0) scale(1);
+}
+
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.modal-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  background: var(--bg-primary);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.form-input {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: var(--transition);
+}
+
+.form-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+/* Toast 提示 */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 999;
+}
+
+.toast {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: slideUp 0.25s ease-out;
+}
+
+.toast-success { border-left: 3px solid var(--success); }
+.toast-error { border-left: 3px solid var(--danger); }
+.toast-info { border-left: 3px solid var(--primary); }
+
+@keyframes slideUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* 移动端导航与返回按钮 */
+.btn-nav-back, .btn-nav-folder {
+  display: none;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+  white-space: nowrap;
+}
+
+.btn-nav-back:hover, .btn-nav-folder:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.mobile-list-header {
+  display: none;
+}
+
+.btn-mobile-nav {
+  display: none;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  align-items: center;
+  gap: 6px;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+
+.btn-mobile-nav:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-close-sidebar {
+  display: none;
+}
+
+/* 移动端抽屉遮罩 */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 55;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   移动端响应式 (完整三级导航返回与抽屉支持)
+   ========================================================================== */
+@media (max-width: 900px) {
+  body {
+    height: 100dvh;
+    height: 100vh;
+  }
+
+  #app-container {
+    height: 100dvh;
+    height: 100vh;
+  }
+
+  /* 顶部移动端专属栏 */
+  .mobile-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+  }
+
+  .btn-mobile-nav {
+    display: inline-flex;
+  }
+
+  .mobile-current-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 150px;
+  }
+
+  .btn-close-sidebar {
+    display: inline-flex !important;
+  }
+
+  .btn-nav-back, .btn-nav-folder {
+    display: inline-flex !important;
+  }
+
+  /* 侧边栏抽屉化 */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: -310px;
+    width: 300px;
+    height: 100dvh;
+    height: 100vh;
+    z-index: 60;
+    box-shadow: 4px 0 28px rgba(0, 0, 0, 0.5);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .sidebar.open {
+    transform: translateX(310px);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+  }
+  .sidebar-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* 中间邮件列表占满屏幕 */
+  .mail-list-panel {
+    width: 100vw;
+    min-width: 100vw;
+    height: 100dvh;
+    height: 100vh;
+  }
+
+  /* 邮件详情平滑滑入覆盖 */
+  .mail-detail-panel {
+    position: fixed;
+    top: 0;
+    left: 100vw;
+    width: 100vw;
+    height: 100dvh;
+    height: 100vh;
+    z-index: 45;
+    background-color: var(--bg-primary);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .mail-detail-panel.active {
+    transform: translateX(-100vw);
+  }
+
+  .detail-header-bar {
+    display: flex;
+    padding: 10px 14px;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+
+  .detail-nav-buttons {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+  }
+
+  .detail-meta-container {
+    padding: 14px 16px 10px 16px;
+    gap: 8px;
+  }
+
+  .detail-title {
+    font-size: 17px;
+  }
+
+  .detail-body-container {
+    margin: 8px 10px 14px 10px;
+    padding: 14px 14px;
+    border-radius: 8px;
+  }
+}

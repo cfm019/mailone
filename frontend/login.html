@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>登录 - MailOne</title>
+  <script>
+    (function() {
+      const theme = localStorage.getItem('mailone_theme') || 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📬</text></svg>">
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      min-height: 100dvh;
+      position: relative;
+    }
+    .theme-corner-toggle {
+      position: absolute;
+      top: 18px;
+      right: 20px;
+      z-index: 10;
+    }
+    .login-container {
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+    }
+    .auth-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 34px 30px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+    .login-header {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-big-icon {
+      width: 52px;
+      height: 52px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      box-shadow: var(--shadow-glow);
+    }
+  </style>
+</head>
+<body>
+  <div class="theme-corner-toggle">
+    <button class="btn-icon" id="btn-toggle-theme" title="切换浅色/深色主题" style="font-size: 18px; padding: 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-surface);">🌓</button>
+  </div>
+
+  <div class="login-container">
+    <div class="auth-card">
+      <div class="login-header">
+        <div class="brand-big-icon">📬</div>
+        <h2 id="login-title" style="color: var(--text-primary); font-size: 20px; font-weight: 700;">MailOne</h2>
+        <p id="login-subtitle" style="font-size: 13px; color: var(--text-muted);">聚合多邮箱与即时推送管理面板</p>
+      </div>
+
+      <form id="auth-form" style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="form-group">
+          <label class="form-label">管理员用户名</label>
+          <input type="text" id="username" class="form-input" required autocomplete="username" placeholder="admin">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">访问密码</label>
+          <input type="password" id="password" class="form-input" required autocomplete="current-password" placeholder="••••••••">
+        </div>
+
+        <div class="form-group" id="totp-field" style="display: none;">
+          <label class="form-label" style="color: var(--warning);">两步验证动态口令 (TOTP)</label>
+          <input type="text" id="totp-code" class="form-input" placeholder="6 位动态口令" maxlength="6" style="letter-spacing: 2px; font-weight: 700;">
+        </div>
+
+        <button type="submit" class="btn-primary" id="btn-submit-login" style="width: 100%; justify-content: center; padding: 11px; margin-top: 4px; font-size: 14px;">
+          登 录
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script>
+    let isInitAdminMode = false;
+
+    function initTheme() {
+      const theme = localStorage.getItem('mailone_theme') || 'light';
+      applyTheme(theme);
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('mailone_theme', theme);
+      const btn = document.getElementById('btn-toggle-theme');
+      if (btn) {
+        btn.textContent = theme === 'light' ? '☀️' : '🌙';
+        btn.title = theme === 'light' ? '当前：Claude 暖米调（点击切为高级石墨黑）' : '当前：高级石墨黑（点击切为 Claude 暖米调）';
+      }
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'light';
+      const next = current === 'light' ? 'dark' : 'light';
+      applyTheme(next);
+      showToast(next === 'light' ? '已切换至 Claude 暖米色调 ☀️' : '已切换至高级石墨深色 🌙', 'info');
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3200);
+    }
+
+    async function checkStatus() {
+      try {
+        const res = await fetch('/api/auth/status');
+        const data = await res.json();
+        if (!data.has_admin) {
+          isInitAdminMode = true;
+          document.getElementById('login-title').textContent = '初次运行设置';
+          document.getElementById('login-subtitle').textContent = '请设置您的系统管理员账号与密码';
+          document.getElementById('btn-submit-login').textContent = '创建管理员并登入';
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    document.getElementById('btn-toggle-theme').addEventListener('click', toggleTheme);
+
+    document.getElementById('auth-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const totpCode = document.getElementById('totp-code').value.trim();
+
+      if (isInitAdminMode) {
+        try {
+          const res = await fetch('/api/auth/init-admin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            showToast('管理员创建成功，正在跳转...', 'success');
+            setTimeout(() => { window.location.href = '/'; }, 800);
+          } else {
+            showToast(data.detail || '创建失败', 'error');
+          }
+        } catch (err) {
+          showToast('网络请求失败', 'error');
+        }
+        return;
+      }
+
+      // 正常登录
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, totp_code: totpCode || null })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          if (data.is_totp_required) {
+            document.getElementById('totp-field').style.display = 'flex';
+            document.getElementById('totp-code').focus();
+            showToast('已启用两步验证，请输入动态口令', 'info');
+            return;
+          }
+          showToast('登录成功，正在进入...', 'success');
+          setTimeout(() => { window.location.href = '/'; }, 600);
+        } else {
+          showToast(data.detail || '用户名或密码错误', 'error');
+        }
+      } catch (err) {
+        showToast('登录服务不可用', 'error');
+      }
+    });
+
+    initTheme();
+    checkStatus();
+  </script>
+</body>
+</html>

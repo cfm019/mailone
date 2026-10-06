@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>邮件详情 - MailOne</title>
+  <script>
+    (function() {
+      const theme = localStorage.getItem('mailone_theme') || 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📬</text></svg>">
+  <style>
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 12px;
+      overflow-y: auto;
+      height: auto;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+    .view-container {
+      width: 100%;
+      max-width: 760px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .view-top-bar {
+      padding: 12px 18px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .view-body-wrapper {
+      padding: 24px 20px;
+      background-color: var(--mail-paper-bg);
+      color: var(--mail-paper-text);
+      font-size: 15px;
+      line-height: 1.6;
+      overflow-x: auto;
+      border-top: 1px solid var(--border-color);
+    }
+  </style>
+</head>
+<body>
+  <div class="view-container">
+    <div class="view-top-bar">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <a href="/" class="btn-nav-back" style="display: inline-flex; text-decoration: none;" title="进入 MailOne 完整邮箱系统">
+          <span>⬅️</span>
+          <span>返回邮箱列表</span>
+        </a>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button class="btn-icon" id="btn-toggle-theme" title="切换浅色/深色主题">🌓</button>
+        <span class="account-pill-badge" id="view-account-badge">Account</span>
+      </div>
+    </div>
+
+    <!-- 邮件元数据 -->
+    <div style="padding: 20px 22px 16px 22px; background: var(--bg-primary); display: flex; flex-direction: column; gap: 10px;">
+      <h1 style="font-size: 19px; font-weight: 700; color: var(--text-primary); line-height: 1.4;" id="view-subject">(无主题)</h1>
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text-secondary); flex-wrap: wrap; gap: 6px;">
+        <div>
+          <span style="color: var(--text-muted);">发件人:</span>
+          <b style="color: var(--text-primary);" id="view-sender-name">Sender</b>
+          <span id="view-sender-addr" style="color: var(--text-muted);">&lt;addr&gt;</span>
+        </div>
+        <span id="view-date" style="font-size: 12px; color: var(--text-muted);">2026-10-06</span>
+      </div>
+    </div>
+
+    <!-- 附件区 -->
+    <div class="attachments-container" id="view-attachments-box" style="display: none;"></div>
+
+    <!-- 正文内容 -->
+    <div class="view-body-wrapper" id="view-body-content">
+      <div style="padding: 40px; text-align: center; color: var(--text-muted);">正在加载邮件内容...</div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script>
+    // 主题切换管理
+    function initTheme() {
+      const theme = localStorage.getItem('mailone_theme') || 'light';
+      applyTheme(theme);
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('mailone_theme', theme);
+      const btn = document.getElementById('btn-toggle-theme');
+      if (btn) {
+        btn.textContent = theme === 'light' ? '☀️' : '🌙';
+        btn.title = theme === 'light' ? '当前：Claude 暖米调（点击切为高级石墨黑）' : '当前：高级石墨黑（点击切为 Claude 暖米调）';
+      }
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'light';
+      const next = current === 'light' ? 'dark' : 'light';
+      applyTheme(next);
+      showToast(next === 'light' ? '已切换至 Claude 暖米色调 ☀️' : '已切换至高级石墨深色 🌙', 'info');
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes) return '0 B';
+      const k = 1024, dm = 1;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    async function loadMagicView() {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+      const token = params.get('token');
+
+      if (!id || !token) {
+        document.getElementById('view-body-content').innerHTML = `
+          <div style="padding: 30px; text-align: center; color: var(--danger);">
+            <h3>无效的访问链接</h3>
+            <p style="font-size: 13px; margin-top: 8px;">缺少授权令牌或邮件ID</p>
+            <div style="margin-top: 16px;">
+              <a href="/" class="btn-primary" style="text-decoration: none;">返回邮箱主站</a>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/magic/view?id=${id}&token=${encodeURIComponent(token)}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          document.getElementById('view-body-content').innerHTML = `
+            <div style="padding: 30px; text-align: center; color: var(--danger);">
+              <h3>${data.detail || '链接已失效'}</h3>
+              <p style="font-size: 13px; margin-top: 8px; color: var(--text-muted);">该临时查看链接可能已过期（有效期30分钟），请访问主站查看完整归档。</p>
+              <div style="margin-top: 16px;">
+                <a href="/" class="btn-primary" style="text-decoration: none;">进入 MailOne 主站</a>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        // 渲染数据
+        document.getElementById('view-subject').textContent = data.subject || '(无主题)';
+        document.getElementById('view-sender-name').textContent = data.from_name || data.from_address;
+        document.getElementById('view-sender-addr').textContent = `<${data.from_address}>`;
+        document.getElementById('view-date').textContent = new Date(data.date).toLocaleString('zh-CN');
+
+        const badge = document.getElementById('view-account-badge');
+        badge.textContent = data.account_name;
+        badge.style.backgroundColor = data.account_color;
+
+        // 附件区
+        const attBox = document.getElementById('view-attachments-box');
+        if (data.attachments && data.attachments.length > 0) {
+          attBox.style.display = 'flex';
+          attBox.innerHTML = '';
+          data.attachments.forEach((att, idx) => {
+            const link = document.createElement('a');
+            link.className = 'attachment-chip';
+            link.href = `/api/mails/${id}/attachment/${idx}`;
+            link.target = '_blank';
+            link.innerHTML = `📎 <span>${att.filename}</span> <small style="color:var(--text-muted)">(${formatBytes(att.size)})</small>`;
+            attBox.appendChild(link);
+          });
+        }
+
+        // 渲染 HTML 正文
+        document.getElementById('view-body-content').innerHTML = data.html_body || `<pre>${data.text_body}</pre>`;
+
+      } catch (e) {
+        document.getElementById('view-body-content').innerHTML = `
+          <div style="padding: 30px; text-align: center; color: var(--danger);">
+            <h3>网络请求失败</h3>
+          </div>
+        `;
+      }
+    }
+
+    document.getElementById('btn-toggle-theme').addEventListener('click', toggleTheme);
+    initTheme();
+    loadMagicView();
+  </script>
+</body>
+</html>

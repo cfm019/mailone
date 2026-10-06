@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  mailone:
+    build: .
+    container_name: mailone
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - BASE_URL=${BASE_URL:-http://localhost:8000}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_ALLOWED_CHAT_IDS=${TELEGRAM_ALLOWED_CHAT_IDS:-}
+      - TELEGRAM_API_BASE=${TELEGRAM_API_BASE:-https://api.telegram.org}
+      - POLL_INTERVAL_SECONDS=60
+    volumes:
+      # 持久化存储 SQLite 数据库与原始 .eml 邮件目录
+      - ./data:/app/data
+      # 挂载本地时区
+      - /etc/localtime:/etc/localtime:ro

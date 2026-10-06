@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MailOne - 集中邮件管理与推送系统</title>
+  <script>
+    // 立即执行以防白屏/暗屏闪烁
+    (function() {
+      const theme = localStorage.getItem('mailone_theme') || 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📬</text></svg>">
+</head>
+<body>
+  <div id="app-container">
+    <!-- 1. 左侧边栏 -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand-header">
+        <div class="brand-logo">
+          <div class="logo-badge">📬</div>
+          <span>MailOne</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <button class="btn-icon" id="btn-sync-all" title="全量立即同步">🔄</button>
+          <button class="btn-icon btn-close-sidebar" id="btn-close-sidebar" title="关闭抽屉">✖</button>
+        </div>
+      </div>
+
+      <!-- 智能视图分区 -->
+      <div class="nav-section">
+        <div class="section-label">视图分类</div>
+        <div class="nav-item active" data-view="inbox">
+          <div class="nav-item-left">
+            <span class="nav-item-icon">📥</span>
+            <span>聚合收件箱</span>
+          </div>
+          <span class="badge-count" id="badge-total-unread">0</span>
+        </div>
+        <div class="nav-item" data-view="unread">
+          <div class="nav-item-left">
+            <span class="nav-item-icon">🔵</span>
+            <span>未读邮件</span>
+          </div>
+        </div>
+        <div class="nav-item" data-view="starred">
+          <div class="nav-item-left">
+            <span class="nav-item-icon">⭐</span>
+            <span>已标星</span>
+          </div>
+        </div>
+        <div class="nav-item" data-view="trash">
+          <div class="nav-item-left">
+            <span class="nav-item-icon">🗑️</span>
+            <span>废纸篓</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 邮箱账户分区 -->
+      <div class="nav-section" style="flex: 1; overflow-y: auto;">
+        <div class="section-label">
+          <span>绑定邮箱账户</span>
+          <button class="btn-icon" id="btn-add-account" title="添加新邮箱" style="font-size: 14px;">➕</button>
+        </div>
+        <div id="accounts-nav-list" style="display: flex; flex-direction: column; gap: 2px;">
+          <!-- 动态渲染账号列表 -->
+        </div>
+      </div>
+
+      <!-- 底部用户信息与设置 -->
+      <div class="sidebar-footer">
+        <div class="user-profile-badge">
+          <span>👤</span>
+          <span id="current-username">Admin</span>
+        </div>
+        <div style="display: flex; gap: 4px;">
+          <button class="btn-icon" id="btn-toggle-theme" title="切换浅色/深色主题">🌓</button>
+          <button class="btn-icon" id="btn-settings" title="安全与设置">⚙️</button>
+          <button class="btn-icon" id="btn-logout" title="退出登录">🚪</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 移动端侧边栏抽屉遮罩 -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <!-- 2. 中间邮件流列表 -->
+    <section class="mail-list-panel">
+      <div class="list-topbar">
+        <!-- 移动端专属常驻顶部操作栏 -->
+        <div class="mobile-list-header">
+          <button class="btn-mobile-nav" id="btn-mobile-menu" title="打开邮箱账户与分类">
+            <span>☰</span>
+            <span>邮箱列表</span>
+          </button>
+          <div class="mobile-current-title" id="mobile-header-title">全部邮件</div>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <button class="btn-icon" id="btn-toggle-theme-mobile" title="切换浅色/深色主题">🌓</button>
+            <button class="btn-icon" id="btn-refresh-list-mobile" title="刷新列表">🔄</button>
+          </div>
+        </div>
+
+        <div class="search-box-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" class="search-input" placeholder="搜索主题、发件人、正文全文...">
+        </div>
+        <div class="list-actions-bar">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="list-status-text">全部邮件</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button class="btn-icon" id="btn-mark-all-read" title="全部标记已读">✓✓ 已读</button>
+            <button class="btn-icon" id="btn-refresh-list" title="刷新列表">🔄</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 滚动邮件流容器 -->
+      <div class="mail-scroll-container" id="mail-list-container">
+        <!-- 动态渲染邮件卡片 -->
+      </div>
+    </section>
+
+    <!-- 3. 右侧邮件阅读面板 -->
+    <main class="mail-detail-panel" id="mail-detail-panel">
+      <!-- 空状态 -->
+      <div class="empty-state-view" id="detail-empty-state">
+        <span style="font-size: 48px; opacity: 0.6;">📬</span>
+        <p style="font-size: 15px;">选择一封邮件开始阅读</p>
+      </div>
+
+      <!-- 详情主内容（选中时显示） -->
+      <div id="detail-content-wrapper" style="display: none; height: 100%; flex-direction: column;">
+        <div class="detail-header-bar">
+          <div class="detail-nav-buttons">
+            <button class="btn-nav-back" id="btn-back-to-list" title="返回邮件列表">
+              <span>⬅️</span>
+              <span>返回列表</span>
+            </button>
+            <button class="btn-nav-folder" id="btn-detail-open-sidebar" title="查看所有邮箱与分类">
+              <span>📁</span>
+              <span>邮箱分类</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="detail-meta-container">
+          <div class="detail-title-row">
+            <h1 class="detail-title" id="detail-subject">(无主题)</h1>
+            <div class="mail-action-toolbar" id="mail-action-toolbar" title="邮件操作">
+              <button class="btn-mail-action" id="btn-detail-star" title="标星/取消">⭐</button>
+              <button class="btn-mail-action" id="btn-detail-unread" title="设为未读">✉️</button>
+              <button class="btn-mail-action" id="btn-detail-paper-mode" title="切换信纸明暗（暗色/浅白信纸）">📄</button>
+              <button class="btn-mail-action" id="btn-detail-download-eml" title="下载 .eml 原文件">💾</button>
+              <button class="btn-mail-action btn-mail-action-danger" id="btn-detail-trash" title="移入废纸篓">🗑️</button>
+            </div>
+          </div>
+          
+          <div class="detail-sender-row">
+            <div class="sender-info-cluster">
+              <div class="avatar-circle" id="detail-avatar">M</div>
+              <div class="sender-names">
+                <span class="sender-display-name" id="detail-from-name">Sender Name</span>
+                <span class="sender-email-address" id="detail-from-address">sender@example.com</span>
+              </div>
+            </div>
+            <span style="font-size: 12px; color: var(--text-muted);" id="detail-date">2026-10-06 10:00</span>
+          </div>
+        </div>
+
+        <!-- 附件列表展示条（若有） -->
+        <div class="attachments-container" id="detail-attachments-box" style="display: none;">
+          <!-- 动态渲染附件标签 -->
+        </div>
+
+        <!-- HTML 正文阅读区 -->
+        <div class="detail-body-container" id="detail-body-container">
+          <!-- 渲染邮件安全清洗后的 HTML -->
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 添加/编辑邮箱账户弹窗 -->
+  <div class="modal-backdrop" id="modal-account">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-title" id="account-modal-title">绑定 IMAP 邮箱账户</span>
+        <button class="btn-icon modal-close-btn">✖</button>
+      </div>
+      <form id="form-account">
+        <input type="hidden" id="acc-id" value="">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">别名备注 (如 "个人 Gmail", "工作 163")</label>
+            <input type="text" id="acc-name" class="form-input" required placeholder="例如：Work 163">
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 2;">
+              <label class="form-label">邮箱地址</label>
+              <input type="email" id="acc-email" class="form-input" required placeholder="user@example.com">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">徽标颜色</label>
+              <input type="color" id="acc-color" class="form-input" value="#3b82f6" style="padding: 2px; height: 38px;">
+            </div>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 2;">
+              <label class="form-label">IMAP 服务器</label>
+              <input type="text" id="acc-imap-server" class="form-input" required placeholder="imap.163.com">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">端口</label>
+              <input type="number" id="acc-imap-port" class="form-input" value="993" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">IMAP 用户名</label>
+            <input type="text" id="acc-username" class="form-input" required placeholder="通常与邮箱相同">
+          </div>
+          <div class="form-group">
+            <label class="form-label" id="acc-password-label">应用专用密码 (App Password)</label>
+            <input type="password" id="acc-password" class="form-input" placeholder="建议生成专用授权码或密码">
+          </div>
+          <div style="margin-top: 6px; padding: 10px; background: rgba(150,150,150,0.06); border-radius: 8px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+              <input type="checkbox" id="acc-sync-delete">
+              <span><b>联动原邮箱</b>：在 MailOne 彻底删除时同步删除原邮箱邮件</span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+          <button type="button" class="btn-danger" id="btn-delete-account" style="display: none;">🗑️ 删除此账户</button>
+          <div style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
+            <button type="button" class="btn-secondary" id="btn-test-account-conn">测试连接</button>
+            <button type="submit" class="btn-primary" id="btn-save-account">保存账户</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 安全与设置弹窗 (TOTP 2FA & Telegram 测试) -->
+  <div class="modal-backdrop" id="modal-settings">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-title">⚙️ 系统设置与安全防护</span>
+        <button class="btn-icon modal-close-btn">✖</button>
+      </div>
+      <div class="modal-body">
+        <div style="padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+          <div style="font-weight: 700; font-size: 14px; margin-bottom: 6px;">🔐 两步验证 (TOTP 2FA)</div>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
+            在公网部署建议启用 2FA，登录时需额外输入 Google Authenticator 等动态口令。
+          </p>
+          <div id="totp-status-box">
+            <!-- 动态渲染开启/关闭状态 -->
+          </div>
+        </div>
+
+        <div style="padding-top: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+          <div style="font-weight: 700; font-size: 14px; margin-bottom: 6px;">📥 历史邮件正文归档</div>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
+            默认历史邮件只拉取标题（点击时即时按需下载）。点击下方可在后台批量下载所有历史邮件的正文与附件至本地磁盘。
+          </p>
+          <button class="btn-secondary" id="btn-batch-fetch-bodies">📦 启动全量历史正文下载任务</button>
+        </div>
+
+        <div style="padding-top: 8px;">
+          <div style="font-weight: 700; font-size: 14px; margin-bottom: 6px;">🤖 Telegram Bot 推送诊断</div>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
+            向环境变量中配置的 Telegram Chat 发送一条连通性测试消息。
+          </p>
+          <button class="btn-secondary" id="btn-test-telegram-push">🚀 发送 Telegram 测试消息</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 全局 Toast 容器 -->
+  <div id="toast-container"></div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
