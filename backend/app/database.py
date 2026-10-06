@@ -154,6 +154,17 @@ async def init_db():
                 settings.TELEGRAM_ALLOWED_CHAT_IDS = db_settings["telegram_allowed_chat_ids"]
             if "telegram_api_base" in db_settings and db_settings["telegram_api_base"]:
                 settings.TELEGRAM_API_BASE = db_settings["telegram_api_base"]
+
+            # 双向持久化：若数据库中已配置，顺手同步写回 .env
+            if settings.TELEGRAM_BOT_TOKEN and settings.TELEGRAM_ALLOWED_CHAT_IDS:
+                try:
+                    update_env_file({
+                        "TELEGRAM_BOT_TOKEN": settings.TELEGRAM_BOT_TOKEN,
+                        "TELEGRAM_ALLOWED_CHAT_IDS": settings.TELEGRAM_ALLOWED_CHAT_IDS,
+                        "TELEGRAM_API_BASE": settings.TELEGRAM_API_BASE or "https://api.telegram.org"
+                    })
+                except Exception as env_err:
+                    logger.debug("Syncing .env on startup skipped: %s", env_err)
         except Exception as e:
             logger.warning("Failed to load system_settings from DB: %s", e)
 

@@ -31,10 +31,16 @@ def _format_friendly_date(date_val) -> str:
 
 class TelegramNotifier:
     def __init__(self):
-        self.bot_token = settings.TELEGRAM_BOT_TOKEN
-        self.api_base = settings.TELEGRAM_API_BASE.rstrip("/")
         self._polling_task: Optional[asyncio.Task] = None
         self._running = False
+
+    @property
+    def bot_token(self) -> str:
+        return (settings.TELEGRAM_BOT_TOKEN or "").strip()
+
+    @property
+    def api_base(self) -> str:
+        return (settings.TELEGRAM_API_BASE or "https://api.telegram.org").strip().rstrip("/")
 
     @property
     def is_configured(self) -> bool:
@@ -42,11 +48,9 @@ class TelegramNotifier:
 
     async def reload_config(self, bot_token: str, allowed_chat_ids: str, api_base: str):
         """动态更新配置并重启长轮询服务"""
-        settings.TELEGRAM_BOT_TOKEN = bot_token
-        settings.TELEGRAM_ALLOWED_CHAT_IDS = allowed_chat_ids
-        settings.TELEGRAM_API_BASE = api_base
-        self.bot_token = bot_token
-        self.api_base = api_base.rstrip("/")
+        settings.TELEGRAM_BOT_TOKEN = bot_token.strip()
+        settings.TELEGRAM_ALLOWED_CHAT_IDS = allowed_chat_ids.strip()
+        settings.TELEGRAM_API_BASE = api_base.strip().rstrip("/")
         await self.stop_polling()
         if self.is_configured:
             await self.start_polling()
@@ -58,7 +62,7 @@ class TelegramNotifier:
             return
         self._running = True
         self._polling_task = asyncio.create_task(self._poll_loop())
-        logger.info("Telegram Bot command listener started.")
+        logger.info("Telegram Bot command listener started for chat IDs: %s", settings.telegram_chat_ids_list)
 
     async def stop_polling(self):
         """停止 Telegram 指令监听"""
@@ -78,6 +82,7 @@ class TelegramNotifier:
                     params = {"offset": offset, "timeout": 25}
                     resp = await client.get(url, params=params)
                     if resp.status_code != 200:
+                        logger.warning("Telegram getUpdates failed (%s): %s", resp.status_code, resp.text)
                         await asyncio.sleep(5)
                         continue
 
@@ -103,7 +108,7 @@ class TelegramNotifier:
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    logger.debug("Error in Telegram poll loop: %s", e)
+                    logger.warning("Telegram poll connection error: %s", e)
                     await asyncio.sleep(5)
 
     async def _handle_command(self, chat_id: int, text: str, client: httpx.AsyncClient):
