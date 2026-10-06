@@ -76,6 +76,7 @@ class AccountResponse(BaseModel):
     last_error: Optional[str]
     sync_delete_remote: bool
     sync_read_remote: bool
+    history_exhausted: bool = False
     created_at: str
 
 # --- 邮件相关 ---

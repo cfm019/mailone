@@ -171,6 +171,10 @@ class SyncManager:
                 # 记录最大 UID 为整个邮箱的当前最新 UID，自此之后的任何新到邮件立刻走秒级增量推送
                 if headers_map or not target_uids:
                     max_uid = max(sorted_uids) if sorted_uids else last_uid
+                    if len(sorted_uids) <= 30:
+                        async with get_db() as db:
+                            await db.execute("UPDATE accounts SET history_exhausted = 1 WHERE id = ?", (account_id,))
+                            await db.commit()
                 else:
                     logger.warning("Initial batch fetch got 0 headers for account %s, keeping last_uid %s", account_id, last_uid)
                     max_uid = last_uid
@@ -385,6 +389,9 @@ class SyncManager:
             min_local_uid = (account["last_uid"] + 1) if (account["last_uid"] and account["last_uid"] > 0) else 4294967295
 
         if min_local_uid <= 1:
+            async with get_db() as db:
+                await db.execute("UPDATE accounts SET history_exhausted = 1 WHERE id = ?", (account_id,))
+                await db.commit()
             return {
                 "success": True,
                 "fetched": 0,
@@ -422,6 +429,9 @@ class SyncManager:
             older_uids = sorted(list(set(older_uids)))
             if not older_uids:
                 await client_wrapper.close()
+                async with get_db() as db:
+                    await db.execute("UPDATE accounts SET history_exhausted = 1 WHERE id = ?", (account_id,))
+                    await db.commit()
                 return {
                     "success": True,
                     "fetched": 0,
@@ -476,6 +486,10 @@ class SyncManager:
 
             await client_wrapper.close()
             remaining_count = max(0, len(older_uids) - len(target_uids))
+            if remaining_count == 0:
+                async with get_db() as db:
+                    await db.execute("UPDATE accounts SET history_exhausted = 1 WHERE id = ?", (account_id,))
+                    await db.commit()
 
             return {
                 "success": True,

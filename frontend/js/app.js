@@ -11,6 +11,7 @@ let currentMails = [];
 let isLoadingMails = false;
 let currentMailDetail = null;
 let accountsData = [];
+let accountHistoryStatus = {};
 
 // --- 主题管理 (Gmail Classic Light vs Obsidian Dark) ---
 function initTheme() {
@@ -94,6 +95,7 @@ async function loadAccounts() {
     if (!res.ok) return;
     accountsData = await res.json();
     renderAccountsNav(accountsData);
+    updateRemoteHistoryBtn();
   } catch (err) {
     console.error('Failed to load accounts', err);
   }
@@ -141,6 +143,7 @@ function renderAccountsNav(accounts) {
 
       closeMobileSidebarAndDetail();
       loadEmails(1);
+      updateRemoteHistoryBtn();
     };
     container.appendChild(item);
   });
@@ -242,6 +245,7 @@ async function loadEmails(page = 1) {
     renderMailList(currentMails);
     updatePaginationControls();
     updateListTitleAndCounter();
+    updateRemoteHistoryBtn();
     listContainer.scrollTop = 0;
   } catch (err) {
     listContainer.innerHTML = '<div style="padding: 28px; text-align: center; color: var(--danger); font-size: 13px;">加载邮件失败，请点击刷新重试</div>';
@@ -309,6 +313,49 @@ function updateListTitleAndCounter() {
 
   const mobileTitle = document.getElementById('mobile-header-title');
   if (mobileTitle) mobileTitle.textContent = baseTitle;
+}
+
+// --- 更新底部远端历史拉取按钮状态 ---
+function updateRemoteHistoryBtn() {
+  const remoteCheckBtn = document.getElementById('btn-check-remote-history');
+  const textSpan = document.getElementById('remote-history-text');
+  if (!remoteCheckBtn || !textSpan) return;
+
+  if (currentAccountId) {
+    const acc = accountsData.find(a => a.id == currentAccountId);
+    const runtimeStatus = accountHistoryStatus[currentAccountId];
+
+    if (acc && (acc.history_exhausted || (runtimeStatus && runtimeStatus.hasMore === false))) {
+      textSpan.textContent = '远端历史已完整';
+      remoteCheckBtn.disabled = true;
+      remoteCheckBtn.classList.add('disabled');
+      return;
+    }
+
+    if (runtimeStatus && runtimeStatus.remaining !== undefined) {
+      textSpan.textContent = `加载更早历史 (剩余 ${runtimeStatus.remaining} 封)`;
+      remoteCheckBtn.disabled = false;
+      remoteCheckBtn.classList.remove('disabled');
+      return;
+    }
+  } else {
+    // "所有邮箱" 模式：如果所有绑定的活跃邮箱都已拉完整
+    const allExhausted = accountsData.length > 0 && accountsData.every(a => {
+      const st = accountHistoryStatus[a.id];
+      return a.history_exhausted || (st && st.hasMore === false);
+    });
+
+    if (allExhausted) {
+      textSpan.textContent = '远端历史已完整';
+      remoteCheckBtn.disabled = true;
+      remoteCheckBtn.classList.add('disabled');
+      return;
+    }
+  }
+
+  textSpan.textContent = '加载更早历史邮件';
+  remoteCheckBtn.disabled = false;
+  remoteCheckBtn.classList.remove('disabled');
 }
 
 // --- 邮件详情查看 ---
@@ -508,6 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
       currentAccountId = null;
       closeMobileSidebarAndDetail();
       loadEmails(1);
+      updateRemoteHistoryBtn();
     });
   });
 
@@ -604,18 +652,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || '检测失败');
 
+        if (currentAccountId) {
+          accountHistoryStatus[currentAccountId] = {
+            hasMore: data.has_more,
+            remaining: data.remaining
+          };
+          if (!data.has_more) {
+            const acc = accountsData.find(a => a.id == currentAccountId);
+            if (acc) acc.history_exhausted = true;
+          }
+        }
+
         if (data.fetched > 0) {
           showToast(`已从服务器拉取 ${data.fetched} 封更早历史邮件`, 'success');
           await loadEmails(1);
         } else {
           showToast(data.message || '远程邮件服务器上已无更早的历史邮件', 'info');
-          if (textSpan) textSpan.textContent = '远端历史已完整';
         }
       } catch (e) {
         showToast(`检测失败: ${e.message}`, 'error');
-        if (textSpan) textSpan.textContent = '检测远端更早历史';
       } finally {
-        remoteCheckBtn.disabled = false;
+        updateRemoteHistoryBtn();
       }
     });
   }

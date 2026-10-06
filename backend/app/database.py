@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     last_error TEXT,
     sync_delete_remote INTEGER NOT NULL DEFAULT 0, -- 删除邮件时是否联动原邮箱
     sync_read_remote INTEGER NOT NULL DEFAULT 0,   -- 标已读时是否联动原邮箱
+    history_exhausted INTEGER NOT NULL DEFAULT 0,  -- 远端历史邮件是否已全部同步到本地
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -124,6 +125,17 @@ async def init_db():
             await db.execute("ALTER TABLE emails ADD COLUMN has_body INTEGER NOT NULL DEFAULT 1")
         except Exception:
             pass  # 已存在该字段
+        try:
+            await db.execute("ALTER TABLE accounts ADD COLUMN history_exhausted INTEGER NOT NULL DEFAULT 0")
+        except Exception:
+            pass  # 已存在该字段
+        try:
+            await db.execute("""
+                UPDATE accounts SET history_exhausted = 1 
+                WHERE id IN (SELECT account_id FROM emails GROUP BY account_id HAVING MIN(uid) <= 1)
+            """)
+        except Exception:
+            pass
         await db.commit()
     logger.info("Database initialized successfully at %s", settings.DB_PATH)
 

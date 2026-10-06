@@ -18,7 +18,8 @@ async def list_accounts(user: dict = Depends(get_current_user)):
             """
             SELECT id, name, color, email, imap_server, imap_port, use_ssl,
                    username, folder, is_active, sync_status, last_sync_at,
-                   last_uid, last_error, sync_delete_remote, sync_read_remote, created_at
+                   last_uid, last_error, sync_delete_remote, sync_read_remote,
+                   history_exhausted, created_at
             FROM accounts ORDER BY id ASC
             """
         )
@@ -42,6 +43,7 @@ async def list_accounts(user: dict = Depends(get_current_user)):
             last_error=r["last_error"],
             sync_delete_remote=bool(r["sync_delete_remote"]),
             sync_read_remote=bool(r["sync_read_remote"]),
+            history_exhausted=bool(r["history_exhausted"]) if "history_exhausted" in r.keys() else False,
             created_at=str(r["created_at"])
         )
         for r in rows
@@ -134,6 +136,7 @@ async def create_account(req: AccountCreate, user: dict = Depends(get_current_us
         last_error=row["last_error"],
         sync_delete_remote=bool(row["sync_delete_remote"]),
         sync_read_remote=bool(row["sync_read_remote"]),
+        history_exhausted=bool(row["history_exhausted"]) if "history_exhausted" in row.keys() else False,
         created_at=str(row["created_at"])
     )
 

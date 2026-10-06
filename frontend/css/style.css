@@ -745,6 +745,15 @@ body {
   color: var(--text-primary);
 }
 
+.btn-check-remote:disabled,
+.btn-check-remote.disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--border-color);
+}
+
 /* ==========================================================================
    3. 右侧邮件阅读面板 (Mail Detail Panel)
    ========================================================================== */
