@@ -11,7 +11,7 @@
     })();
   </script>
   <link rel="stylesheet" href="/css/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230b57d0'><path d='M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z'/></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28' fill='none'><rect x='3' y='6.5' width='22' height='15' rx='4' stroke='%230284c7' stroke-width='2.2'/><path d='M4.5 8.5L12.7 14.8C13.48 15.4 14.52 15.4 15.3 14.8L23.5 8.5' stroke='%237c3aed' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/></svg>">
 </head>
 <body>
   <div id="app-wrapper">
@@ -22,8 +22,22 @@
           <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
         <div class="brand-logo" id="brand-logo">
-          <svg class="icon-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-          <span class="brand-name">MailOne</span>
+          <svg class="brand-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="logo-body-grad" x1="2" y1="22" x2="26" y2="8" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#0284c7"/>
+                <stop offset="100%" stop-color="#3b82f6"/>
+              </linearGradient>
+              <linearGradient id="logo-flap-grad" x1="4" y1="6" x2="24" y2="16" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#4f46e5"/>
+                <stop offset="50%" stop-color="#7c3aed"/>
+                <stop offset="100%" stop-color="#ec4899"/>
+              </linearGradient>
+            </defs>
+            <rect x="3" y="6.5" width="22" height="15" rx="4" stroke="url(#logo-body-grad)" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M4.5 8.5L12.7 14.8C13.48 15.4 14.52 15.4 15.3 14.8L23.5 8.5" stroke="url(#logo-flap-grad)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="brand-title">Mail<span class="brand-one">1</span></span>
         </div>
       </div>
 

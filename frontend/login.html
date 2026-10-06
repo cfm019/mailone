@@ -11,7 +11,7 @@
     })();
   </script>
   <link rel="stylesheet" href="/css/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230b57d0'><path d='M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z'/></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28' fill='none'><rect x='3' y='6.5' width='22' height='15' rx='4' stroke='%230284c7' stroke-width='2.2'/><path d='M4.5 8.5L12.7 14.8C13.48 15.4 14.52 15.4 15.3 14.8L23.5 8.5' stroke='%237c3aed' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/></svg>">
   <style>
     body {
       display: flex;
@@ -52,14 +52,25 @@
       gap: 10px;
     }
     .brand-big-icon {
-      width: 52px;
-      height: 52px;
-      background: var(--primary);
-      border-radius: 14px;
+      width: 56px;
+      height: 56px;
+      background: var(--bg-hover);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
+    }
+    .brand-one {
+      font-weight: 800;
+      font-size: 22px;
+      font-style: italic;
+      margin-left: 2px;
+      background: linear-gradient(135deg, #3b82f6 0%, #7c3aed 50%, #ec4899 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
+      filter: drop-shadow(0 2px 6px rgba(124, 58, 237, 0.25));
     }
   </style>
 </head>
@@ -74,9 +85,23 @@
     <div class="auth-card">
       <div class="login-header">
         <div class="brand-big-icon">
-          <svg class="icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <svg style="width:32px;height:32px;" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="login-logo-body" x1="2" y1="22" x2="26" y2="8" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#0284c7"/>
+                <stop offset="100%" stop-color="#3b82f6"/>
+              </linearGradient>
+              <linearGradient id="login-logo-flap" x1="4" y1="6" x2="24" y2="16" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#4f46e5"/>
+                <stop offset="50%" stop-color="#7c3aed"/>
+                <stop offset="100%" stop-color="#ec4899"/>
+              </linearGradient>
+            </defs>
+            <rect x="3" y="6.5" width="22" height="15" rx="4" stroke="url(#login-logo-body)" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M4.5 8.5L12.7 14.8C13.48 15.4 14.52 15.4 15.3 14.8L23.5 8.5" stroke="url(#login-logo-flap)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </div>
-        <h2 id="login-title" style="color: var(--text-primary); font-size: 20px; font-weight: 700;">MailOne</h2>
+        <h2 id="login-title" style="color: var(--text-primary); font-size: 21px; font-weight: 700; display: inline-flex; align-items: baseline;">Mail<span class="brand-one">1</span></h2>
         <p id="login-subtitle" style="font-size: 13px; color: var(--text-muted);">聚合多邮箱与即时推送管理面板</p>
       </div>
 
