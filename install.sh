@@ -165,6 +165,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=${INSTALL_DIR}
+EnvironmentFile=-${INSTALL_DIR}/.env
 Environment="PATH=${INSTALL_DIR}/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 ExecStart=${INSTALL_DIR}/.venv/bin/python -m backend.app.main
 Restart=always
