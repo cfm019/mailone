@@ -101,6 +101,44 @@ async function loadAccounts() {
   }
 }
 
+// 乐观扣减账号未读数（即时响应用户点击已读操作）
+function decrementAccountUnread(accountId) {
+  if (!accountsData) return;
+  const acc = accountsData.find(a => a.id === accountId);
+  if (acc && acc.unread_count > 0) {
+    acc.unread_count = Math.max(0, acc.unread_count - 1);
+    updateAccountBadgeDom(accountId, acc.unread_count);
+  }
+  // 全局收件箱总未读数
+  const totalUnreadEl = document.getElementById('badge-total-unread');
+  if (totalUnreadEl) {
+    const cur = parseInt(totalUnreadEl.textContent, 10) || 0;
+    totalUnreadEl.textContent = Math.max(0, cur - 1);
+  }
+}
+
+// 更新指定账号卡片的未读徽标 DOM
+function updateAccountBadgeDom(accountId, count) {
+  const accItem = document.querySelector(`.account-item[data-id="${accountId}"]`);
+  if (!accItem) return;
+  let badge = accItem.querySelector('.badge-count');
+  if (count > 0) {
+    if (badge) {
+      badge.textContent = count;
+    } else {
+      const rightEl = accItem.querySelector('.account-item-right');
+      if (rightEl) {
+        badge = document.createElement('span');
+        badge.className = 'badge-count';
+        badge.textContent = count;
+        rightEl.insertBefore(badge, rightEl.firstChild);
+      }
+    }
+  } else if (badge) {
+    badge.remove();
+  }
+}
+
 function renderAccountsNav(accounts) {
   const container = document.getElementById('accounts-nav-list');
   if (!container) return;
@@ -173,7 +211,7 @@ function createMailCard(mail) {
     <div class="mail-card-snippet">${escapeHtml(mail.snippet)}</div>
     <div class="mail-card-footer">
       <span class="account-pill-badge" style="background-color: ${mail.account_color};">${escapeHtml(mail.account_name)}</span>
-      ${!mail.has_body ? '<span style="font-size:11px; color:var(--text-muted); display:inline-flex; align-items:center; gap:3px;"><svg class="icon" style="width:12px;height:12px;" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg> 待载入</span>' : ''}
+      ${!mail.has_body ? '<span class="mail-pending-body-tag" style="font-size:11px; color:var(--text-muted); display:inline-flex; align-items:center; gap:3px;"><svg class="icon" style="width:12px;height:12px;" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg> 待载入</span>' : ''}
       ${mail.has_attachments ? '<span style="display:inline-flex; align-items:center; color:var(--text-muted);" title="含附件"><svg class="icon" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span>' : ''}
       <button class="card-star-btn ${mail.is_starred ? 'active' : ''}" title="${mail.is_starred ? '取消标星' : '标星'}">
         <svg class="icon" viewBox="0 0 24 24" ${mail.is_starred ? 'fill="currentColor"' : 'fill="none"'}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -207,9 +245,16 @@ function createMailCard(mail) {
   card.addEventListener('click', () => {
     document.querySelectorAll('.mail-card').forEach(c => c.classList.remove('selected'));
     card.classList.add('selected');
-    card.classList.remove('unread');
-    const dot = card.querySelector('.unread-indicator-dot');
-    if (dot) dot.remove();
+
+    // 乐观消除未读红点并扣减账号未读数字
+    if (!mail.is_read) {
+      mail.is_read = true;
+      card.classList.remove('unread');
+      const dot = card.querySelector('.unread-indicator-dot');
+      if (dot) dot.remove();
+      decrementAccountUnread(mail.account_id);
+    }
+
     loadMailDetail(mail.id, mail);
   });
 
@@ -449,6 +494,35 @@ async function loadMailDetail(mailId, initialMeta = null) {
     if (activeLoadingMailId !== mailId) return;
 
     currentMailDetail = data;
+
+    // 1. 同步内存中列表对应邮件对象的状态
+    const targetMail = currentMails.find(m => m.id === mailId);
+    if (targetMail) {
+      targetMail.has_body = true;
+      targetMail.is_read = true;
+      if (data.snippet) targetMail.snippet = data.snippet;
+    }
+
+    // 2. 及时消除当前卡片的“待载入”微标，并更新正文摘要
+    const cardEl = document.querySelector(`.mail-card[data-id="${mailId}"]`);
+    if (cardEl) {
+      const pendingTag = cardEl.querySelector('.mail-pending-body-tag');
+      if (pendingTag) {
+        pendingTag.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+        pendingTag.style.opacity = '0';
+        pendingTag.style.transform = 'scale(0.8)';
+        setTimeout(() => pendingTag.remove(), 250);
+      }
+      if (data.snippet) {
+        const snippetEl = cardEl.querySelector('.mail-card-snippet');
+        if (snippetEl && !snippetEl.textContent.trim()) {
+          snippetEl.textContent = data.snippet;
+        }
+      }
+    }
+
+    // 3. 静默在后台对齐账户真实未读数
+    loadAccounts();
 
     // 完整数据到达后，再次刷新头部（同步可能更新的标星、发件人全称等）
     renderMailDetailHeader(currentMailDetail);
@@ -804,6 +878,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('已标记为未读', 'info');
       closeMobileSidebarAndDetail();
       loadEmails(currentPage);
+      loadAccounts();
     });
   }
 
@@ -824,6 +899,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('detail-content-wrapper').style.display = 'none';
       currentMailDetail = null;
       loadEmails(currentPage);
+      loadAccounts();
     });
   }
 
@@ -1268,3 +1344,17 @@ function formatBytes(bytes) {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
+
+// --- 窗口切回前台或轻量定时对齐账号未读状态 ---
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    loadAccounts();
+  }
+});
+
+// 每 60 秒轻量静默对齐一次各账户未读数
+setInterval(() => {
+  if (document.visibilityState === 'visible') {
+    loadAccounts();
+  }
+}, 60000);
