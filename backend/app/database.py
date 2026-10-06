@@ -167,6 +167,10 @@ async def init_db():
                 settings.TELEGRAM_ALLOWED_CHAT_IDS = db_settings["telegram_allowed_chat_ids"] or ""
             if "telegram_api_base" in db_settings and db_settings["telegram_api_base"]:
                 settings.TELEGRAM_API_BASE = db_settings["telegram_api_base"]
+            if "telegram_auto_flush" in db_settings:
+                settings.TELEGRAM_AUTO_FLUSH = db_settings["telegram_auto_flush"].lower() in ("1", "true", "yes")
+            else:
+                settings.TELEGRAM_AUTO_FLUSH = False
         except Exception as e:
             logger.warning("Failed to load system_settings from DB: %s", e)
 

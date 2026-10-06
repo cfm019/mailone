@@ -1082,7 +1082,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const payload = {
         bot_token: document.getElementById('tg-bot-token').value.trim(),
         allowed_chat_ids: document.getElementById('tg-chat-id').value.trim(),
-        api_base: document.getElementById('tg-api-base').value.trim() || 'https://api.telegram.org'
+        api_base: document.getElementById('tg-api-base').value.trim() || 'https://api.telegram.org',
+        auto_flush: !!(document.getElementById('tg-auto-flush') && document.getElementById('tg-auto-flush').checked)
       };
 
       try {
@@ -1279,11 +1280,13 @@ async function loadTelegramConfig() {
     const tokenInput = document.getElementById('tg-bot-token');
     const chatIdInput = document.getElementById('tg-chat-id');
     const apiBaseInput = document.getElementById('tg-api-base');
+    const autoFlushInput = document.getElementById('tg-auto-flush');
     const badge = document.getElementById('tg-status-badge');
 
     if (tokenInput && !tokenInput.value) tokenInput.value = data.bot_token || '';
     if (chatIdInput && !chatIdInput.value) chatIdInput.value = data.allowed_chat_ids || '';
     if (apiBaseInput && !apiBaseInput.value) apiBaseInput.value = data.api_base || 'https://api.telegram.org';
+    if (autoFlushInput) autoFlushInput.checked = !!data.auto_flush;
 
     if (badge) {
       if (data.is_configured) {

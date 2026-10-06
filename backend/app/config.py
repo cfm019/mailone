@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_ALLOWED_CHAT_IDS: str = ""
     TELEGRAM_API_BASE: str = "https://api.telegram.org"
+    TELEGRAM_AUTO_FLUSH: bool = False  # 自动补发离线未通知邮件（默认关闭）
 
     # IMAP 同步引擎设置
     POLL_INTERVAL_SECONDS: int = 60  # IDLE 断开或不支持 IDLE 时的轮询兜底周期

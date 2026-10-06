@@ -302,7 +302,9 @@ class TelegramNotifier:
         return any_success
 
     async def flush_pending_notifications(self, limit: int = 10):
-        """扫描并补发因重启或网络中断导致未发出的 Telegram 通知（断点补发）"""
+        """扫描并补发因重启或网络中断导致未发出的 Telegram 通知（断点补发，需显式开启）"""
+        if not getattr(settings, "TELEGRAM_AUTO_FLUSH", False):
+            return
         if not self.is_configured:
             return
 

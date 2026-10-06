@@ -410,6 +410,13 @@
               <input type="text" id="tg-api-base" class="form-input" placeholder="https://api.telegram.org" autocomplete="off">
               <span style="font-size: 11.5px; color: var(--text-muted);">国内网络环境若无法直连 Telegram，可填写自建或公开反代 API 地址</span>
             </div>
+            <div class="form-group" style="margin-top: 2px;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 500;">
+                <input type="checkbox" id="tg-auto-flush" style="width: 15px; height: 15px; accent-color: var(--primary);">
+                <span>自动补发离线未推送的邮件（默认关闭）</span>
+              </label>
+              <span style="font-size: 11.5px; color: var(--text-muted); margin-left: 23px; display: block; margin-top: 2px;">关闭时，重启或断网不补发老消息；开启后，恢复时自动补发未成功的增量邮件通知</span>
+            </div>
 
             <div style="display: flex; gap: 8px; margin-top: 6px;">
               <button type="submit" class="btn-primary" id="btn-save-telegram" style="flex: 1; justify-content: center;">保存配置</button>
