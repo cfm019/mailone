@@ -431,9 +431,33 @@ async function loadMailDetail(mailId) {
       attBox.style.display = 'none';
     }
 
-    // HTML 正文渲染
+    // HTML 正文渲染（使用 Shadow DOM 彻底隔离邮件自带的全局 CSS，杜绝 h1 / body 等外部样式污染主界面）
     bodyContainer.classList.remove('paper-light');
-    bodyContainer.innerHTML = currentMailDetail.html_body || `<pre style="font-family:inherit; white-space:pre-wrap;">${escapeHtml(currentMailDetail.text_body)}</pre>`;
+    bodyContainer.innerHTML = '<div id="mail-shadow-host"></div>';
+    const shadowHost = document.getElementById('mail-shadow-host');
+    const shadow = shadowHost.attachShadow({ mode: 'open' });
+
+    const baseShadowStyle = `
+      <style>
+        :host {
+          display: block;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+          color: inherit;
+          line-height: 1.6;
+          word-break: break-word;
+        }
+        img { max-width: 100% !important; height: auto !important; }
+        a { color: #1a73e8; }
+      </style>
+    `;
+
+    shadow.innerHTML = baseShadowStyle + (currentMailDetail.html_body || `<pre style="font-family:inherit; white-space:pre-wrap;">${escapeHtml(currentMailDetail.text_body)}</pre>`);
+
+    // 确保邮件内所有链接均在新标签页安全打开
+    shadow.querySelectorAll('a').forEach(a => {
+      if (!a.getAttribute('target')) a.setAttribute('target', '_blank');
+      a.setAttribute('rel', 'noopener noreferrer');
+    });
 
   } catch (e) {
     showToast('加载邮件详情失败', 'error');
