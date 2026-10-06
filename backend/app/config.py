@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     )
 
     # 基础配置
+    BASE_DIR: Path = BASE_DIR
     APP_NAME: str = "MailOne"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False

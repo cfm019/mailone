@@ -2,7 +2,7 @@ import aiosqlite
 import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
-from backend.app.config import settings
+from backend.app.config import settings, BASE_DIR
 
 logger = logging.getLogger("mailone.database")
 
@@ -197,9 +197,9 @@ async def set_system_setting(key: str, value: str):
 
 def update_env_file(updates: dict[str, str]):
     """将配置变更增量写回 .env 文件以保持持久一致"""
-    env_path = settings.BASE_DIR / ".env"
+    env_path = BASE_DIR / ".env"
     if not env_path.exists():
-        example_path = settings.BASE_DIR / ".env.example"
+        example_path = BASE_DIR / ".env.example"
         if example_path.exists():
             import shutil
             shutil.copy(example_path, env_path)
