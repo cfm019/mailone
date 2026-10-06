@@ -330,47 +330,115 @@
           <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
-      <div class="modal-body">
-        <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">两步验证 (2FA / TOTP)</h3>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">使用 Google Authenticator、1Password 等身份验证器提升账户安全性。</p>
-        
-        <div id="totp-status-box" style="padding: 12px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 16px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span id="totp-status-text" style="font-size: 13px; font-weight: 500;">检查状态中...</span>
-            <button class="btn-secondary" id="btn-manage-totp" style="padding: 5px 12px; font-size: 12px;">管理 2FA</button>
-          </div>
-        </div>
 
-        <div id="totp-setup-area" style="display: none; border-top: 1px dashed var(--border-color); padding-top: 14px;">
-          <p style="font-size: 13px; margin-bottom: 10px;">扫描下方二维码绑定验证器：</p>
-          <div style="text-align: center; margin: 12px 0;">
-            <img id="totp-qr-img" src="" alt="TOTP QR Code" style="width: 160px; height: 160px; border-radius: 8px; background: #fff; padding: 4px; box-shadow: var(--shadow-sm); display: inline-block;">
-          </div>
-          <div style="background: var(--bg-hover); border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-            <div style="font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-              <span>密钥: </span><code id="totp-secret-text" style="font-family: monospace; font-weight: 600; color: var(--text-primary); user-select: all; letter-spacing: 1px;"></code>
-            </div>
-            <button class="btn-secondary" id="btn-copy-totp-secret" style="font-size: 11px; padding: 2px 8px; flex-shrink: 0;" type="button">复制</button>
-          </div>
-          <div class="form-group">
-            <label class="form-label">输入手机验证器显示的 6 位动态码确认：</label>
-            <div style="display: flex; gap: 8px;">
-              <input type="text" id="totp-verify-input" class="form-input" placeholder="000000" maxlength="8" style="letter-spacing: 2px; font-weight: 700;">
-              <button class="btn-primary" id="btn-confirm-totp" style="white-space: nowrap;">激活 2FA</button>
-            </div>
-          </div>
-        </div>
-
-        <h3 style="font-size: 14px; font-weight: 600; margin: 20px 0 8px 0;">Telegram 推送与测试</h3>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">测试 Telegram Bot 是否已配置成功并能够正常向您的账户下发通知。</p>
-        <button class="btn-secondary" id="btn-test-telegram" style="width: 100%; justify-content: center;">发送测试推送消息</button>
-
-        <h3 style="font-size: 14px; font-weight: 600; margin: 20px 0 8px 0;">全量邮件同步</h3>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">向所有已配置的活跃邮箱服务器发起即时拉取。后台守护进程会自动同步，通常无需频繁手动全量拉取。</p>
-        <button class="btn-secondary" id="btn-sync-all" style="width: 100%; justify-content: center; gap: 6px;">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
-          <span id="btn-sync-all-text">立即全量同步所有邮箱</span>
+      <!-- 设置分类选项卡 -->
+      <div class="modal-tabs" id="settings-tabs">
+        <button class="modal-tab-btn active" data-tab="security">
+          <svg class="icon" style="width:15px;height:15px;" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>两步验证 (2FA)</span>
         </button>
+        <button class="modal-tab-btn" data-tab="telegram">
+          <svg class="icon" style="width:15px;height:15px;" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          <span>Telegram 推送</span>
+        </button>
+        <button class="modal-tab-btn" data-tab="sync">
+          <svg class="icon" style="width:15px;height:15px;" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+          <span>全量同步</span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Tab 1: 两步验证 (2FA / TOTP) -->
+        <div class="modal-tab-panel active" id="tab-panel-security">
+          <div>
+            <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 6px;">两步验证 (2FA / TOTP)</h3>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">使用 Google Authenticator、1Password 等身份验证器提升账户登录安全性。</p>
+          </div>
+          
+          <div id="totp-status-box" style="padding: 12px; background: var(--bg-hover); border-radius: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span id="totp-status-text" style="font-size: 13px; font-weight: 500;">检查状态中...</span>
+              <button class="btn-secondary" id="btn-manage-totp" style="padding: 5px 12px; font-size: 12px;">管理 2FA</button>
+            </div>
+          </div>
+
+          <div id="totp-setup-area" style="display: none; border-top: 1px dashed var(--border-color); padding-top: 14px;">
+            <p style="font-size: 13px; margin-bottom: 10px;">扫描下方二维码绑定验证器：</p>
+            <div style="text-align: center; margin: 12px 0;">
+              <img id="totp-qr-img" src="" alt="TOTP QR Code" style="width: 160px; height: 160px; border-radius: 8px; background: #fff; padding: 4px; box-shadow: var(--shadow-sm); display: inline-block;">
+            </div>
+            <div style="background: var(--bg-hover); border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <div style="font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                <span>密钥: </span><code id="totp-secret-text" style="font-family: monospace; font-weight: 600; color: var(--text-primary); user-select: all; letter-spacing: 1px;"></code>
+              </div>
+              <button class="btn-secondary" id="btn-copy-totp-secret" style="font-size: 11px; padding: 2px 8px; flex-shrink: 0;" type="button">复制</button>
+            </div>
+            <div class="form-group">
+              <label class="form-label">输入手机验证器显示的 6 位动态码确认：</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="totp-verify-input" class="form-input" placeholder="000000" maxlength="8" style="letter-spacing: 2px; font-weight: 700;">
+                <button class="btn-primary" id="btn-confirm-totp" style="white-space: nowrap;">激活 2FA</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Telegram 推送与配置 -->
+        <div class="modal-tab-panel" id="tab-panel-telegram">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+            <div>
+              <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Telegram 机器人设置</h3>
+              <p style="font-size: 13px; color: var(--text-muted); line-height: 1.4;">新邮件到达时自动向您的 Telegram 发送通知与免密只读速览。</p>
+            </div>
+            <span id="tg-status-badge" style="font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 500; background: var(--bg-hover); color: var(--text-muted); white-space: nowrap; flex-shrink: 0;">检测中...</span>
+          </div>
+
+          <form id="form-telegram-settings" style="display: flex; flex-direction: column; gap: 12px; margin-top: 4px;">
+            <div class="form-group">
+              <label class="form-label" for="tg-bot-token">Bot Token</label>
+              <input type="text" id="tg-bot-token" class="form-input" placeholder="例如：123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ" autocomplete="off">
+              <span style="font-size: 11.5px; color: var(--text-muted);">通过 Telegram 联系 <a href="https://t.me/BotFather" target="_blank" style="color: var(--primary); text-decoration: underline;">@BotFather</a> 发送 <code>/newbot</code> 获取</span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="tg-chat-id">Chat ID</label>
+              <input type="text" id="tg-chat-id" class="form-input" placeholder="例如：123456789 (多个以英文逗号分隔)" autocomplete="off">
+              <span style="font-size: 11.5px; color: var(--text-muted);">接收通知的数字用户 ID，联系 <a href="https://t.me/userinfobot" target="_blank" style="color: var(--primary); text-decoration: underline;">@userinfobot</a> 发送任意消息获取</span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="tg-api-base">API 反代地址 (可选)</label>
+              <input type="text" id="tg-api-base" class="form-input" placeholder="https://api.telegram.org" autocomplete="off">
+              <span style="font-size: 11.5px; color: var(--text-muted);">国内网络环境若无法直连 Telegram，可填写自建或公开反代 API 地址</span>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-top: 6px;">
+              <button type="submit" class="btn-primary" id="btn-save-telegram" style="flex: 1; justify-content: center;">保存配置</button>
+              <button type="button" class="btn-secondary" id="btn-test-telegram" style="flex: 1; justify-content: center; gap: 6px;">
+                <svg class="icon" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                <span id="btn-test-telegram-text">发送测试消息</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Tab 3: 全量邮件同步 -->
+        <div class="modal-tab-panel" id="tab-panel-sync">
+          <div>
+            <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 6px;">全量邮件同步</h3>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">向所有已配置的活跃邮箱账户服务器发起即时全量同步检查。</p>
+          </div>
+
+          <div style="padding: 14px; background: var(--bg-hover); border-radius: 8px; display: flex; flex-direction: column; gap: 12px;">
+            <div style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.5;">
+              系统后台守护进程已自动保持增量监听与定时轮询。通常无需频繁手动全量拉取；若需要立刻从所有远端邮件服务器获取最新邮件，可手动触发此操作。
+            </div>
+            <button class="btn-secondary" id="btn-sync-all" style="width: 100%; justify-content: center; gap: 6px;">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+              <span id="btn-sync-all-text">立即全量同步所有邮箱</span>
+            </button>
+          </div>
+        </div>
       </div>
       <div class="modal-footer" style="text-align: right;">
         <button type="button" class="btn-secondary modal-close-btn">关闭</button>

@@ -14,6 +14,7 @@ from backend.app.api.auth_router import router as auth_router
 from backend.app.api.account_router import router as account_router
 from backend.app.api.mail_router import router as mail_router
 from backend.app.api.magic_router import router as magic_router
+from backend.app.api.telegram_router import router as telegram_router
 from backend.app.telegram.bot import telegram_notifier
 
 logging.basicConfig(
@@ -58,6 +59,7 @@ app.include_router(auth_router)
 app.include_router(account_router)
 app.include_router(mail_router)
 app.include_router(magic_router)
+app.include_router(telegram_router)
 
 @app.get("/api/health")
 async def health_check():
@@ -67,12 +69,6 @@ async def health_check():
         "version": settings.APP_VERSION,
         "telegram_configured": telegram_notifier.is_configured
     }
-
-@app.post("/api/telegram/test")
-async def test_telegram_push():
-    """测试 Telegram Bot 推送配置"""
-    ok, msg = await telegram_notifier.send_test_message()
-    return {"success": ok, "message": msg}
 
 # 挂载前端静态文件
 FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"

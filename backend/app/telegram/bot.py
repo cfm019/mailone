@@ -20,6 +20,17 @@ class TelegramNotifier:
     def is_configured(self) -> bool:
         return bool(self.bot_token and settings.telegram_chat_ids_list)
 
+    async def reload_config(self, bot_token: str, allowed_chat_ids: str, api_base: str):
+        """动态更新配置并重启长轮询服务"""
+        settings.TELEGRAM_BOT_TOKEN = bot_token
+        settings.TELEGRAM_ALLOWED_CHAT_IDS = allowed_chat_ids
+        settings.TELEGRAM_API_BASE = api_base
+        self.bot_token = bot_token
+        self.api_base = api_base.rstrip("/")
+        await self.stop_polling()
+        if self.is_configured:
+            await self.start_polling()
+
     async def start_polling(self):
         """启动 Telegram 指令长轮询监听协程"""
         if not self.is_configured:
@@ -245,16 +256,39 @@ class TelegramNotifier:
                     success = False
         return success
 
-    async def send_test_message(self, test_chat_id: Optional[int] = None) -> tuple[bool, str]:
+    async def send_test_message(
+        self,
+        test_chat_id: Optional[int] = None,
+        bot_token: Optional[str] = None,
+        chat_id: Optional[str] = None,
+        api_base: Optional[str] = None
+    ) -> tuple[bool, str]:
         """测试 Telegram Bot 连接配置"""
-        if not self.bot_token:
+        token = bot_token.strip() if bot_token else self.bot_token
+        if not token:
             return False, "Bot Token 未配置"
-        target_ids = [test_chat_id] if test_chat_id else settings.telegram_chat_ids_list
+
+        base = (api_base.strip() if api_base else self.api_base).rstrip("/")
+
+        target_ids = []
+        if chat_id:
+            for x in chat_id.split(","):
+                x = x.strip()
+                if x:
+                    try:
+                        target_ids.append(int(x))
+                    except ValueError:
+                        pass
+        elif test_chat_id:
+            target_ids = [test_chat_id]
+        else:
+            target_ids = settings.telegram_chat_ids_list
+
         if not target_ids:
-            return False, "未设置允许的 Chat ID"
+            return False, "未设置允许的 Chat ID (必须为纯数字)"
 
         async with httpx.AsyncClient(timeout=10.0) as client:
-            url = f"{self.api_base}/bot{self.bot_token}/sendMessage"
+            url = f"{base}/bot{token}/sendMessage"
             payload = {
                 "chat_id": target_ids[0],
                 "text": "🎉 <b>MailOne 测试消息</b>\n\nTelegram Bot 推送与交互通道配置正常！可尝试向机器人发送 <code>/recent</code> 或 <code>/status</code>。",
@@ -264,7 +298,7 @@ class TelegramNotifier:
                 resp = await client.post(url, json=payload)
                 if resp.status_code == 200:
                     return True, "发送成功"
-                return False, f"API 响应错误: {resp.text}"
+                return False, f"API 响应错误 ({resp.status_code}): {resp.text}"
             except Exception as e:
                 return False, f"网络错误: {str(e)}"
 

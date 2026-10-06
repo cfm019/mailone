@@ -918,32 +918,102 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 设置模态窗
-  document.getElementById('btn-settings').addEventListener('click', async () => {
-    document.getElementById('modal-settings').classList.add('active');
-    await loadTotpStatus();
+  // 设置模态窗选项卡切换
+  const settingsTabBtns = document.querySelectorAll('#settings-tabs .modal-tab-btn');
+  settingsTabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.tab;
+      settingsTabBtns.forEach(b => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('#modal-settings .modal-tab-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === `tab-panel-${target}`);
+      });
+      if (target === 'telegram') {
+        loadTelegramConfig();
+      }
+    });
   });
 
-  // Telegram 测试推送
-  document.getElementById('btn-test-telegram').addEventListener('click', async () => {
-    const btn = document.getElementById('btn-test-telegram');
-    btn.disabled = true;
-    btn.textContent = '正在发送...';
-    try {
-      const res = await fetch('/api/telegram/test', { method: 'POST' });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        showToast('测试消息已成功下发至 Telegram', 'success');
-      } else {
-        showToast(`下发失败: ${data.detail || data.error}`, 'error');
-      }
-    } catch (e) {
-      showToast(`发送出错: ${e.message}`, 'error');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '发送测试推送消息';
-    }
+  // 设置模态窗打开
+  document.getElementById('btn-settings').addEventListener('click', async () => {
+    document.getElementById('modal-settings').classList.add('active');
+    await Promise.all([loadTotpStatus(), loadTelegramConfig()]);
   });
+
+  // Telegram 表单保存
+  const tgForm = document.getElementById('form-telegram-settings');
+  if (tgForm) {
+    tgForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const saveBtn = document.getElementById('btn-save-telegram');
+      const originalText = saveBtn.textContent;
+      saveBtn.disabled = true;
+      saveBtn.textContent = '保存中...';
+
+      const payload = {
+        bot_token: document.getElementById('tg-bot-token').value.trim(),
+        allowed_chat_ids: document.getElementById('tg-chat-id').value.trim(),
+        api_base: document.getElementById('tg-api-base').value.trim() || 'https://api.telegram.org'
+      };
+
+      try {
+        const res = await fetch('/api/telegram/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showToast(data.message || 'Telegram 配置已保存并即时生效', 'success');
+          await loadTelegramConfig();
+        } else {
+          showToast(data.detail || '保存失败', 'error');
+        }
+      } catch (err) {
+        showToast('网络请求失败', 'error');
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalText;
+      }
+    });
+  }
+
+  // Telegram 测试推送
+  const testTgBtn = document.getElementById('btn-test-telegram');
+  if (testTgBtn) {
+    testTgBtn.addEventListener('click', async () => {
+      const textSpan = document.getElementById('btn-test-telegram-text');
+      const originalText = textSpan ? textSpan.textContent : '发送测试消息';
+      testTgBtn.disabled = true;
+      if (textSpan) textSpan.textContent = '正在发送...';
+
+      const botToken = document.getElementById('tg-bot-token').value.trim();
+      const chatId = document.getElementById('tg-chat-id').value.trim();
+      const apiBase = document.getElementById('tg-api-base').value.trim();
+
+      try {
+        const res = await fetch('/api/telegram/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bot_token: botToken || null,
+            chat_id: chatId || null,
+            api_base: apiBase || null
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showToast(data.message || '测试消息已成功下发至 Telegram！', 'success');
+        } else {
+          showToast(`下发失败: ${data.message || data.detail || '未知错误'}`, 'error');
+        }
+      } catch (e) {
+        showToast(`发送出错: ${e.message}`, 'error');
+      } finally {
+        testTgBtn.disabled = false;
+        if (textSpan) textSpan.textContent = originalText;
+      }
+    });
+  }
 
   // 登出
   document.getElementById('btn-logout').addEventListener('click', async () => {
@@ -1068,6 +1138,35 @@ async function disableTotp() {
   } catch (e) {
     showToast('网络错误，关闭 2FA 失败', 'error');
   }
+}
+
+// --- Telegram 配置读取与状态 ---
+async function loadTelegramConfig() {
+  try {
+    const res = await fetch('/api/telegram/config');
+    if (!res.ok) return;
+    const data = await res.json();
+    const tokenInput = document.getElementById('tg-bot-token');
+    const chatIdInput = document.getElementById('tg-chat-id');
+    const apiBaseInput = document.getElementById('tg-api-base');
+    const badge = document.getElementById('tg-status-badge');
+
+    if (tokenInput && !tokenInput.value) tokenInput.value = data.bot_token || '';
+    if (chatIdInput && !chatIdInput.value) chatIdInput.value = data.allowed_chat_ids || '';
+    if (apiBaseInput && !apiBaseInput.value) apiBaseInput.value = data.api_base || 'https://api.telegram.org';
+
+    if (badge) {
+      if (data.is_configured) {
+        badge.textContent = '● 已配置运行中';
+        badge.style.background = 'rgba(20, 108, 46, 0.12)';
+        badge.style.color = 'var(--success)';
+      } else {
+        badge.textContent = '○ 未配置';
+        badge.style.background = 'var(--bg-hover)';
+        badge.style.color = 'var(--text-muted)';
+      }
+    }
+  } catch (e) {}
 }
 
 // --- 通用辅助工具函数 ---
