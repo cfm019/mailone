@@ -17,13 +17,11 @@ class TelegramConfigResponse(BaseModel):
     allowed_chat_ids: str
     api_base: str
     is_configured: bool
-    auto_flush: bool = False
 
 class TelegramConfigUpdate(BaseModel):
     bot_token: str = Field(default="", description="Telegram Bot Token")
     allowed_chat_ids: str = Field(default="", description="接收通知的 Chat ID，多个逗号分隔")
     api_base: Optional[str] = Field(default="https://api.telegram.org", description="API 反代地址")
-    auto_flush: bool = Field(default=False, description="是否自动补发离线未推送的邮件")
 
 class TelegramTestRequest(BaseModel):
     bot_token: Optional[str] = None
@@ -37,8 +35,7 @@ async def get_telegram_config(user: dict = Depends(get_current_user)):
         bot_token=settings.TELEGRAM_BOT_TOKEN or "",
         allowed_chat_ids=settings.TELEGRAM_ALLOWED_CHAT_IDS or "",
         api_base=settings.TELEGRAM_API_BASE or "https://api.telegram.org",
-        is_configured=telegram_notifier.is_configured,
-        auto_flush=getattr(settings, "TELEGRAM_AUTO_FLUSH", False)
+        is_configured=telegram_notifier.is_configured
     )
 
 @router.post("/config")
@@ -54,17 +51,14 @@ async def save_telegram_config(req: TelegramConfigUpdate, user: dict = Depends(g
     await set_system_setting("telegram_bot_token", token)
     await set_system_setting("telegram_allowed_chat_ids", chat_ids)
     await set_system_setting("telegram_api_base", api_base)
-    await set_system_setting("telegram_auto_flush", "1" if req.auto_flush else "0")
 
     # 2. 动态更新内存与重载 Telegram 协程监听
-    settings.TELEGRAM_AUTO_FLUSH = req.auto_flush
     await telegram_notifier.reload_config(token, chat_ids, api_base)
 
     return {
         "success": True,
         "message": "Telegram Bot 配置已保存并即时生效",
-        "is_configured": telegram_notifier.is_configured,
-        "auto_flush": settings.TELEGRAM_AUTO_FLUSH
+        "is_configured": telegram_notifier.is_configured
     }
 
 @router.post("/test")
