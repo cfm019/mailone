@@ -1,10 +1,10 @@
-# MailOne 📬
+# MailOne
 
 > **多邮箱聚合查看、本地归档并推送 Telegram 的轻量邮箱管理系统。**
 
 ---
 
-## 🌟 系统功能
+## 系统功能
 
 - **多 IMAP 邮箱聚合收信**：同时监听 Gmail、Outlook、QQ、163 等多个邮箱，支持 **IMAP IDLE 长连接秒级推送** 与定时轮询兜底。
 - **混合持久化存储 (Hybrid Storage)**：
@@ -23,7 +23,7 @@
 
 ---
 
-## 🚀 快速启动
+## 快速启动
 
 ### 方式一：一键自动安装（推荐 VPS 原生部署，带 Systemd 开机自启）
 
@@ -41,7 +41,52 @@ cd mailone
 sudo bash install.sh
 ```
 
-> **后续更新代码**：只需再次在安装目录下执行 `sudo bash install.sh`，脚本会自动拉取 GitHub 最新版本、更新依赖并平滑重启服务，同时安全保留现有的 `.env` 配置与 `data/` 邮件数据。
+- **安装目录**：程序默认安装在 `/opt/mailone`。
+- **安全监听**：服务默认安全监听在 `127.0.0.1:11001`（本地回环地址，不直接向公网暴露明文端口）。
+- **修改配置**：如需配置域名或 Telegram Bot，直接编辑 `/opt/mailone/.env`，然后执行 `sudo systemctl restart mailone` 即可生效。
+- **后续更新**：再次在安装目录下执行 `sudo bash install.sh`，脚本会自动拉取 GitHub 最新版本、更新依赖并平滑重启服务，同时安全保留现有的 `.env` 配置与 `data/` 邮件数据。
+
+---
+
+## 反向代理与 HTTPS 配置（推荐 Caddy / Nginx）
+
+MailOne 默认安全监听在 `127.0.0.1:11001`，生产环境推荐使用反向代理绑定你的域名并启用 HTTPS。
+
+### 方案 A：使用 Caddy（最简单，自动申请与续期 SSL 证书）
+
+安装 Caddy 后，只需在 `/etc/caddy/Caddyfile` 中添加：
+
+```caddy
+mail.yourdomain.com {
+    reverse_proxy 127.0.0.1:11001
+}
+```
+
+执行以下命令重载配置，Caddy 会自动申请 Let's Encrypt 证书并启用 HTTPS：
+```bash
+sudo systemctl reload caddy
+```
+
+### 方案 B：使用 Nginx
+
+在 `/etc/nginx/conf.d/mailone.conf` 中添加配置：
+
+```nginx
+server {
+    listen 80;
+    server_name mail.yourdomain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:11001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+> **注意**：配置反向代理域名后，请编辑 `/opt/mailone/.env` 将 `BASE_URL` 改为你实际的域名（如 `BASE_URL=https://mail.yourdomain.com`），然后执行 `sudo systemctl restart mailone`。这样 Telegram 推送中的短期免密邮件链接才能在手机端正常点击跳转。
 
 ---
 
@@ -97,7 +142,7 @@ sudo bash install.sh
 
 ---
 
-## ⚙️ 邮箱配置指南（应用专用密码）
+## 邮箱配置指南（应用专用密码）
 
 为了账号安全，MailOne 强制要求配置**“应用专用密码”（App Password）**而非邮箱主密码：
 
@@ -107,7 +152,7 @@ sudo bash install.sh
 
 ---
 
-## 🤖 Telegram Bot 配置步骤
+## Telegram Bot 配置步骤
 
 1. 在 Telegram 中找到 [@BotFather](https://t.me/BotFather)，发送 `/newbot`，按提示创建一个 Bot 并保存得到的 **API Token**。
 2. 找到 [@userinfobot](https://t.me/userinfobot) 或 [@getidsbot](https://t.me/getidsbot)，获取你的个人数字 **Chat ID**。
@@ -116,7 +161,7 @@ sudo bash install.sh
 
 ---
 
-## 📁 数据存储结构
+## 数据存储结构
 
 数据默认持久化在 `./data` 目录下：
 ```text
@@ -132,7 +177,7 @@ data/
 
 ---
 
-## 🧪 自动化测试
+## 自动化测试
 
 项目内置完整的单元测试与端到端测试套件：
 ```bash
@@ -145,6 +190,6 @@ PYTHONPATH=. .venv/bin/python tests/test_api.py
 
 ---
 
-## 📄 开源许可证
+## 开源许可证
 
 MIT License.

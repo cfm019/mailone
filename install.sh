@@ -166,7 +166,7 @@ Type=simple
 User=root
 WorkingDirectory=${INSTALL_DIR}
 Environment="PATH=${INSTALL_DIR}/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
-ExecStart=${INSTALL_DIR}/.venv/bin/uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+ExecStart=${INSTALL_DIR}/.venv/bin/python -m backend.app.main
 Restart=always
 RestartSec=5s
 KillMode=process
@@ -186,28 +186,51 @@ systemctl restart "${SERVICE_NAME}"
 sleep 2
 
 if systemctl is-active --quiet "${SERVICE_NAME}"; then
-  # 获取本地 IP
+  # 读取 .env 中实际配置的监听地址与端口
+  ENV_HOST=$(grep -E '^HOST=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2 | tr -d ' "\r' || echo "127.0.0.1")
+  ENV_PORT=$(grep -E '^PORT=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2 | tr -d ' "\r' || echo "11001")
   LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "你的服务器IP")
   
   echo ""
   echo -e "${GREEN}================================================================${NC}"
-  echo -e "${GREEN}  🎉 MailOne 服务已成功安装并启动！开机自启已生效！${NC}"
+  echo -e "${GREEN}  MailOne 服务已成功安装并启动！开机自启已生效！${NC}"
   echo -e "${GREEN}================================================================${NC}"
   echo ""
-  echo -e "  🌐 Web 访问地址:  ${CYAN}http://${LOCAL_IP}:8000${NC}"
-  echo -e "  📁 程序安装路径:  ${YELLOW}${INSTALL_DIR}${NC}"
-  echo -e "  ⚙️  配置文件路径:  ${YELLOW}${INSTALL_DIR}/.env${NC}"
-  echo -e "  💾 数据库与归档:  ${YELLOW}${INSTALL_DIR}/data/${NC}"
+  echo -e "  服务监听地址:  ${CYAN}http://${ENV_HOST}:${ENV_PORT}${NC}"
+  echo -e "  程序安装目录:  ${YELLOW}${INSTALL_DIR}${NC}"
+  echo -e "  核心配置文件:  ${YELLOW}${INSTALL_DIR}/.env${NC}"
+  echo -e "  本地邮件归档:  ${YELLOW}${INSTALL_DIR}/data/${NC}"
+  echo ""
+  
+  if [[ "${ENV_HOST}" == "127.0.0.1" || "${ENV_HOST}" == "localhost" ]]; then
+    echo -e "${PURPLE}反向代理配置指引 (推荐 Caddy，自带自动 HTTPS)：${NC}"
+    echo -e "  当前服务已默认安全监听于本地 127.0.0.1:${ENV_PORT}，不向公网暴露明文端口。"
+    echo -e "  若使用 Caddy，只需在 ${CYAN}/etc/caddy/Caddyfile${NC} 中添加："
+    echo -e "  --------------------------------------------------"
+    echo -e "  ${GREEN}mail.yourdomain.com {${NC}"
+    echo -e "      ${GREEN}reverse_proxy 127.0.0.1:${ENV_PORT}${NC}"
+    echo -e "  ${GREEN}}${NC}"
+    echo -e "  --------------------------------------------------"
+    echo -e "  然后执行: ${CYAN}systemctl reload caddy${NC} 即可自动完成 SSL 证书申请与代理！"
+    echo ""
+  else
+    echo -e "  公网直连访问:  ${CYAN}http://${LOCAL_IP}:${ENV_PORT}${NC}"
+    echo ""
+  fi
+
+  echo -e "${PURPLE}如何修改设置：${NC}"
+  echo -e "  1. 编辑配置文件:  ${CYAN}nano ${INSTALL_DIR}/.env${NC}"
+  echo -e "  2. 重启服务生效:  ${CYAN}systemctl restart ${SERVICE_NAME}${NC}"
   echo ""
   echo -e "${PURPLE}常用运维命令：${NC}"
-  echo -e "  • 查看运行日志:    ${CYAN}journalctl -u ${SERVICE_NAME} -f${NC}"
+  echo -e "  • 查看实时日志:    ${CYAN}journalctl -u ${SERVICE_NAME} -f${NC}"
   echo -e "  • 重启服务:        ${CYAN}systemctl restart ${SERVICE_NAME}${NC}"
   echo -e "  • 停止服务:        ${CYAN}systemctl stop ${SERVICE_NAME}${NC}"
   echo -e "  • 查看运行状态:    ${CYAN}systemctl status ${SERVICE_NAME}${NC}"
-  echo -e "  • 后续拉取更新:    ${CYAN}cd ${INSTALL_DIR} && bash install.sh${NC}"
+  echo -e "  • 一键升级更新:    ${CYAN}cd ${INSTALL_DIR} && bash install.sh${NC}"
   echo ""
   echo -e "${YELLOW}首次使用提醒：${NC}"
-  echo -e "  请直接在浏览器中打开上述地址，系统会自动引导您创建初始管理员账号密码。"
+  echo -e "  打开 Web 界面后，系统会自动引导您创建初始管理员账号与密码。"
   echo ""
 else
   error "服务启动遇到异常，请运行以下命令查看详细错误日志："

@@ -4,6 +4,7 @@ let currentView = 'inbox';
 let currentAccountId = null;
 let currentSearchQuery = '';
 let currentPage = 1;
+let currentEmailLimit = 50;
 let currentMailDetail = null;
 let accountsData = [];
 
@@ -122,6 +123,7 @@ function renderAccountsNav() {
 
     item.onclick = () => {
       currentAccountId = acc.id;
+      currentEmailLimit = 50;
       document.querySelectorAll('.sidebar .nav-item').forEach(el => el.classList.remove('active'));
       item.classList.add('active');
       const title = acc.name;
@@ -145,7 +147,7 @@ async function loadEmails(page = 1) {
   const params = new URLSearchParams({
     view: currentView,
     page: currentPage,
-    page_size: 40
+    page_size: currentEmailLimit
   });
 
   if (currentAccountId) params.append('account_id', currentAccountId);
@@ -160,8 +162,25 @@ async function loadEmails(page = 1) {
     if (unreadEl) unreadEl.textContent = data.unread_total || 0;
 
     renderMailList(data.items);
+    updateLoadMoreBtnStatus();
   } catch (err) {
     listContainer.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--danger);">加载邮件失败</div>';
+  }
+}
+
+function updateLoadMoreBtnStatus() {
+  const btn = document.getElementById('btn-load-more-history');
+  const icon = document.getElementById('load-history-icon');
+  const text = document.getElementById('load-history-text');
+  if (!btn || !icon || !text) return;
+
+  btn.disabled = false;
+  icon.textContent = '📥';
+  if (currentAccountId) {
+    const acc = accountsData.find(a => a.id == currentAccountId);
+    text.textContent = acc ? `加载更早的 50 封历史邮件 (${acc.name})` : '加载更早的 50 封历史邮件';
+  } else {
+    text.textContent = '加载更早的历史邮件（全部活跃邮箱）';
   }
 }
 
@@ -477,6 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
       item.classList.add('active');
       currentView = item.dataset.view;
       currentAccountId = null;
+      currentEmailLimit = 50;
       const titleSpan = item.querySelector('.nav-item-left span:last-child') || item.querySelector('span:nth-child(2)');
       const title = titleSpan ? titleSpan.textContent.trim() : '邮件列表';
       const statusText = document.getElementById('list-status-text');
@@ -500,6 +520,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 刷新与全部已读
   document.getElementById('btn-refresh-list').addEventListener('click', () => loadEmails(currentPage));
+
+  // 底部点击按需拉取更早历史邮件（单次批量 FETCH，防风控）
+  const loadMoreBtn = document.getElementById('btn-load-more-history');
+  if (loadMoreBtn) {
+    loadMoreBtn.addEventListener('click', async () => {
+      const icon = document.getElementById('load-history-icon');
+      const text = document.getElementById('load-history-text');
+
+      loadMoreBtn.disabled = true;
+      icon.textContent = '⏳';
+      text.textContent = '正在从远程服务器批量拉取更早历史...';
+
+      try {
+        const url = currentAccountId
+          ? `/api/accounts/${currentAccountId}/fetch-more-history`
+          : `/api/accounts/fetch-more-history-all`;
+
+        const res = await fetch(url, { method: 'POST' });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.detail || '拉取历史邮件失败');
+
+        if (data.fetched > 0) {
+          currentEmailLimit += data.fetched;
+          const leftMsg = data.has_more ? `（还有约 ${data.remaining} 封未拉取）` : '（已全部加载完毕）';
+          showToast(`🎉 成功拉取 ${data.fetched} 封更早历史邮件！${leftMsg}`, 'success');
+          await loadEmails(1);
+        } else {
+          showToast(data.message || '没有更早的历史邮件了', 'info');
+        }
+
+        if (data.has_more === false) {
+          loadMoreBtn.disabled = true;
+          icon.textContent = '✅';
+          text.textContent = '已拉取全部历史邮件';
+        } else {
+          updateLoadMoreBtnStatus();
+        }
+      } catch (e) {
+        showToast(`拉取失败: ${e.message}`, 'error');
+        updateLoadMoreBtnStatus();
+      }
+    });
+  }
   document.getElementById('btn-mark-all-read').addEventListener('click', async () => {
     const cards = document.querySelectorAll('.mail-card.unread');
     const ids = Array.from(cards).map(c => parseInt(c.dataset.id));

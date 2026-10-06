@@ -24,7 +24,7 @@ async def list_emails(
     from_address: Optional[str] = Query(None, description="按发件人地址聚合筛选"),
     q: Optional[str] = Query(None, description="全文搜索关键词"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(30, ge=1, le=100),
+    page_size: int = Query(50, ge=1, le=300),
     user: dict = Depends(get_current_user)
 ):
     """多维复合邮件列表检索（支持全文检索、发件人聚合、OTP专区）"""

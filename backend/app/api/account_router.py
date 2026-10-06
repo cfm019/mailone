@@ -241,3 +241,18 @@ async def trigger_fetch_all_bodies(account_id: int, user: dict = Depends(get_cur
     """手工发起将该账号所有历史邮件正文下载到本地的归档任务"""
     await sync_manager.start_batch_body_fetch(account_id)
     return {"message": "已在后台启动全部历史邮件正文下载任务"}
+
+@router.post("/{account_id}/fetch-more-history")
+async def fetch_more_account_history(account_id: int, user: dict = Depends(get_current_user)):
+    """按需拉取更早的 50 封历史邮件 Header（单次批量 FETCH，防风控，秒级响应）"""
+    res = await sync_manager.fetch_more_history(account_id, count=50)
+    if not res.get("success", False):
+        raise HTTPException(status_code=500, detail=res.get("error", "拉取历史邮件失败"))
+    return res
+
+@router.post("/fetch-more-history-all")
+async def fetch_more_history_all_accounts(user: dict = Depends(get_current_user)):
+    """为所有活跃邮箱各拉取一批（30封）更早的历史邮件"""
+    res = await sync_manager.fetch_more_history_all(count=30)
+    return res
+

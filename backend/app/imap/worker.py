@@ -121,13 +121,17 @@ class SyncManager:
             max_uid = max([last_uid] + sorted_uids) if sorted_uids else last_uid
 
             if is_initial:
-                # 方案 A 阶段 1：初次接入历史邮件，从最新到最旧优先索引 Header，极速呈现最新邮件
-                logger.info("Initial sync for account %s: indexing %s history headers (newest first, Body on-demand)...", account_id, len(sorted_uids))
-                for uid in sorted(sorted_uids, reverse=True):
-                    if not self._running:
-                        break
-                    
-                    header_bytes = await client_wrapper.fetch_header_fast(client, uid)
+                # 初次接入：单次批量拉取最新 30 封邮件 Header（1 次网络往返，秒级完成，杜绝 Google 频率风控）
+                target_uids = sorted_uids[-30:] if len(sorted_uids) > 30 else sorted_uids
+                logger.info(
+                    "Initial sync for account %s: found %s total emails. Batch fetching newest %s headers...",
+                    account_id, len(sorted_uids), len(target_uids)
+                )
+
+                headers_map = await client_wrapper.fetch_headers_batch(client, target_uids, timeout_seconds=20.0)
+
+                for uid in sorted(target_uids, reverse=True):
+                    header_bytes = headers_map.get(uid)
                     if not header_bytes:
                         continue
 
@@ -158,8 +162,9 @@ class SyncManager:
                         )
                         await db.commit()
 
-                    if uid > max_uid:
-                        max_uid = uid
+                # 记录最大 UID 为整个邮箱的当前最新 UID，自此之后的任何新到邮件立刻走秒级增量推送
+                max_uid = max(sorted_uids) if sorted_uids else last_uid
+
 
             else:
                 # 日常增量新邮件：全量拉取完整 Body、落盘 .eml、并发送 Telegram 推送
@@ -341,5 +346,167 @@ class SyncManager:
                 await self.fetch_single_email_body_on_demand(r["id"])
                 await asyncio.sleep(0.3)
         logger.info("Batch body fetch completed for account %s.", account_id)
+
+    async def fetch_more_history(self, account_id: int, count: int = 50) -> dict:
+        """
+        按需拉取更早的历史邮件 Header（单次批量 FETCH，防风控）
+        """
+        account = None
+        async with get_db() as db:
+            cursor = await db.execute("SELECT * FROM accounts WHERE id = ?", (account_id,))
+            account = await cursor.fetchone()
+
+        if not account or not account["is_active"]:
+            return {"success": False, "error": "账户不存在或已禁用"}
+
+        # 查找本地数据库中该账户最早的 UID
+        min_local_uid = None
+        async with get_db() as db:
+            cursor = await db.execute(
+                "SELECT MIN(uid) as min_uid FROM emails WHERE account_id = ?",
+                (account_id,)
+            )
+            row = await cursor.fetchone()
+            if row and row["min_uid"] is not None:
+                min_local_uid = row["min_uid"]
+
+        if min_local_uid is None:
+            min_local_uid = 999999999
+
+        if min_local_uid <= 1:
+            return {
+                "success": True,
+                "fetched": 0,
+                "remaining": 0,
+                "has_more": False,
+                "account_name": account["name"],
+                "message": "已加载该邮箱的全部历史邮件"
+            }
+
+        client_wrapper = IMAPClient(
+            host=account["imap_server"],
+            port=account["imap_port"],
+            use_ssl=bool(account["use_ssl"]),
+            username=account["username"],
+            password_encrypted=account["password_encrypted"],
+            folder=account["folder"]
+        )
+
+        try:
+            client = await client_wrapper.connect()
+            search_query = f"UID 1:{min_local_uid - 1}"
+            resp = await asyncio.wait_for(client.uid_search(search_query), timeout=15.0)
+
+            older_uids = []
+            if resp.result == "OK" and resp.lines:
+                for line in resp.lines:
+                    if isinstance(line, bytes):
+                        line = line.decode("ascii", errors="ignore")
+                    for p in line.strip().split():
+                        if p.isdigit():
+                            u_int = int(p)
+                            if u_int < min_local_uid:
+                                older_uids.append(u_int)
+
+            older_uids = sorted(list(set(older_uids)))
+            if not older_uids:
+                await client_wrapper.close()
+                return {
+                    "success": True,
+                    "fetched": 0,
+                    "remaining": 0,
+                    "has_more": False,
+                    "account_name": account["name"],
+                    "message": "已加载该邮箱的全部历史邮件"
+                }
+
+            # 取比当前本地邮件更早的最近 count 封
+            target_uids = older_uids[-count:] if len(older_uids) > count else older_uids
+            logger.info(
+                "Fetching %s more history headers for account %s (%s)...",
+                len(target_uids), account_id, account["name"]
+            )
+
+            headers_map = await client_wrapper.fetch_headers_batch(client, target_uids, timeout_seconds=25.0)
+            inserted_count = 0
+
+            for uid in sorted(target_uids, reverse=True):
+                header_bytes = headers_map.get(uid)
+                if not header_bytes:
+                    continue
+
+                parsed = parse_raw_email(header_bytes)
+                async with get_db() as db:
+                    await db.execute(
+                        """
+                        INSERT OR IGNORE INTO emails (
+                            account_id, message_id, uid, subject, from_name, from_address,
+                            to_addresses, date, snippet, has_attachments, attachments_json,
+                            otp_code, has_body, eml_path, raw_size
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '', 0)
+                        """,
+                        (
+                            account_id,
+                            parsed.message_id,
+                            uid,
+                            parsed.subject,
+                            parsed.from_name,
+                            parsed.from_address,
+                            json.dumps(parsed.to_addresses),
+                            parsed.date.isoformat() if parsed.date else datetime.now().isoformat(),
+                            "",
+                            0,
+                            "[]",
+                            None
+                        )
+                    )
+                    await db.commit()
+                inserted_count += 1
+
+            await client_wrapper.close()
+            remaining_count = max(0, len(older_uids) - len(target_uids))
+
+            return {
+                "success": True,
+                "fetched": inserted_count,
+                "remaining": remaining_count,
+                "has_more": remaining_count > 0,
+                "account_name": account["name"],
+                "earliest_uid": min(target_uids) if target_uids else min_local_uid
+            }
+
+        except Exception as e:
+            logger.error("Error fetching more history for account %s: %s", account_id, e)
+            try:
+                await client_wrapper.close()
+            except Exception:
+                pass
+            return {"success": False, "error": str(e), "account_name": account["name"]}
+
+    async def fetch_more_history_all(self, count: int = 30) -> dict:
+        """为所有活跃邮箱各拉取一批更早的历史邮件"""
+        active_accounts = []
+        async with get_db() as db:
+            cursor = await db.execute("SELECT id, name FROM accounts WHERE is_active = 1")
+            active_accounts = await cursor.fetchall()
+
+        total_fetched = 0
+        total_remaining = 0
+        has_any_more = False
+
+        for acc in active_accounts:
+            res = await self.fetch_more_history(acc["id"], count=count)
+            if res.get("success"):
+                total_fetched += res.get("fetched", 0)
+                total_remaining += res.get("remaining", 0)
+                if res.get("has_more"):
+                    has_any_more = True
+
+        return {
+            "success": True,
+            "fetched": total_fetched,
+            "remaining": total_remaining,
+            "has_more": has_any_more
+        }
 
 sync_manager = SyncManager()

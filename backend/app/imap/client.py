@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from typing import Optional, List, Tuple
+import re
+from typing import Optional, List, Tuple, Dict
 from aioimaplib import aioimaplib
 from backend.app.auth import decrypt_secret
 
@@ -103,18 +104,28 @@ class IMAPClient:
 
         return sorted_uids
 
-    async def fetch_raw_email(self, client: aioimaplib.IMAP4_SSL, uid: int) -> Optional[bytes]:
+    async def fetch_raw_email(self, client: aioimaplib.IMAP4_SSL, uid: int, timeout_seconds: float = 30.0) -> Optional[bytes]:
         """
         使用 BODY.PEEK[] 抓取邮件原始字节数据（只读拉取，绝不惊扰原邮箱未读状态）
         """
-        resp = await client.uid("FETCH", str(uid), "(BODY.PEEK[])")
+        try:
+            resp = await asyncio.wait_for(
+                client.uid("FETCH", str(uid), "(BODY.PEEK[])"),
+                timeout=timeout_seconds
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Fetch raw email timed out for UID %s", uid)
+            return None
+        except Exception as e:
+            logger.error("Fetch raw email error for UID %s: %s", uid, e)
+            return None
+
         if resp.result != "OK":
             logger.error("Failed to fetch email UID %s: %s", uid, resp.lines)
             return None
 
         for item in resp.lines:
             if isinstance(item, (bytearray, bytes)):
-                # 排除协议头如 "1825 FETCH (... BODY[] {17091}"、尾部 ")" 和 "Fetch completed"
                 if b'FETCH (' in item or item == b')' or b'completed' in item.lower():
                     continue
                 return bytes(item)
@@ -123,9 +134,17 @@ class IMAPClient:
 
         return None
 
-    async def fetch_header_fast(self, client: aioimaplib.IMAP4_SSL, uid: int) -> Optional[bytes]:
-        """仅拉取邮件 Header 元数据（Subject, From, Date 等），极速秒级索引"""
-        resp = await client.uid("FETCH", str(uid), "(BODY.PEEK[HEADER.FIELDS (SUBJECT FROM TO DATE MESSAGE-ID)])")
+    async def fetch_header_fast(self, client: aioimaplib.IMAP4_SSL, uid: int, timeout_seconds: float = 12.0) -> Optional[bytes]:
+        """仅拉取单封邮件 Header 元数据（Subject, From, Date 等）"""
+        try:
+            resp = await asyncio.wait_for(
+                client.uid("FETCH", str(uid), "(BODY.PEEK[HEADER.FIELDS (SUBJECT FROM TO DATE MESSAGE-ID)])"),
+                timeout=timeout_seconds
+            )
+        except Exception as e:
+            logger.warning("Fetch header timed out or failed for UID %s: %s", uid, e)
+            return None
+
         if resp.result != "OK":
             return None
         for item in resp.lines:
@@ -136,6 +155,46 @@ class IMAPClient:
             elif isinstance(item, tuple) and len(item) == 2:
                 return bytes(item[1])
         return None
+
+    async def fetch_headers_batch(
+        self, client: aioimaplib.IMAP4_SSL, uids: List[int], timeout_seconds: float = 25.0
+    ) -> Dict[int, bytes]:
+        """
+        单次指令批量抓取多个 UID 的 Header 元数据（Subject, From, Date 等）。
+        将 N 次独立网络往返压缩为 1 次，防止触发 Gmail / 163 等服务端的频率风控与连接挂起。
+        """
+        if not uids:
+            return {}
+
+        uids_str = ",".join(str(u) for u in uids)
+        command = "(BODY.PEEK[HEADER.FIELDS (SUBJECT FROM TO DATE MESSAGE-ID)])"
+
+        try:
+            resp = await asyncio.wait_for(
+                client.uid("FETCH", uids_str, command),
+                timeout=timeout_seconds
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Batch fetch headers timed out for %s UIDs (%s...)", len(uids), uids_str[:40])
+            return {}
+        except Exception as e:
+            logger.error("Batch fetch headers network error: %s", e)
+            return {}
+
+        if resp.result != "OK":
+            logger.error("Batch fetch headers failed: %s", resp.lines)
+            return {}
+
+        headers_map: Dict[int, bytes] = {}
+        for item in resp.lines:
+            if isinstance(item, tuple) and len(item) == 2:
+                status_line = item[0] if isinstance(item[0], (bytes, bytearray)) else b""
+                m = re.search(rb'UID\s+(\d+)', status_line, re.IGNORECASE)
+                if m:
+                    uid = int(m.group(1))
+                    headers_map[uid] = bytes(item[1])
+
+        return headers_map
 
     async def mark_seen(self, uid: int, client: Optional[aioimaplib.IMAP4_SSL] = None) -> bool:
         """向远程服务器将邮件标记为已读"""

@@ -426,6 +426,46 @@ body {
   opacity: 0.9;
 }
 
+/* 邮件列表底部操作条（加载历史） */
+.mail-list-footer-bar {
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.btn-load-history {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-load-history:hover:not(:disabled) {
+  background: var(--bg-surface-hover);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-load-history:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  border-style: solid;
+}
+
 /* 3. 右侧详情面板 */
 .mail-detail-panel {
   flex: 1;

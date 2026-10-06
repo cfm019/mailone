@@ -17,12 +17,12 @@ class Settings(BaseSettings):
     APP_NAME: str = "MailOne"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
-    HOST: str = "0.0.0.0"
-    PORT: int = 8000
+    HOST: str = "127.0.0.1"
+    PORT: int = 11001
     
     # 外部公网访问域名（用于在 Telegram 推送里生成免密 Magic Link 查看地址）
-    # 例如：https://mail.yourdomain.com:8000
-    BASE_URL: str = Field(default="http://localhost:8000", env="BASE_URL")
+    # 例如：https://mail.yourdomain.com
+    BASE_URL: str = Field(default="http://localhost:11001", env="BASE_URL")
 
     # 安全密钥（若未设置，会自动从安全文件读取或生成并持久化）
     SECRET_KEY: str = Field(default="", env="SECRET_KEY")
