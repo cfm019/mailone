@@ -487,6 +487,23 @@ body {
   white-space: nowrap;
 }
 
+.account-item-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.account-item.active .badge-count {
+  background-color: rgba(0, 29, 53, 0.12);
+  color: var(--text-active-pill);
+}
+
+[data-theme="dark"] .account-item.active .badge-count {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: var(--text-active-pill);
+}
+
 .btn-edit-acc {
   width: 24px;
   height: 24px;

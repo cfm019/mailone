@@ -16,11 +16,12 @@ async def list_accounts(user: dict = Depends(get_current_user)):
     async with get_db() as db:
         cursor = await db.execute(
             """
-            SELECT id, name, color, email, imap_server, imap_port, use_ssl,
-                   username, folder, is_active, sync_status, last_sync_at,
-                   last_uid, last_error, sync_delete_remote, sync_read_remote,
-                   history_exhausted, created_at
-            FROM accounts ORDER BY id ASC
+            SELECT a.id, a.name, a.color, a.email, a.imap_server, a.imap_port, a.use_ssl,
+                   a.username, a.folder, a.is_active, a.sync_status, a.last_sync_at,
+                   a.last_uid, a.last_error, a.sync_delete_remote, a.sync_read_remote,
+                   a.history_exhausted, a.created_at,
+                   (SELECT COUNT(*) FROM emails e WHERE e.account_id = a.id AND e.is_read = 0 AND e.is_deleted = 0) as unread_count
+            FROM accounts a ORDER BY a.id ASC
             """
         )
         rows = await cursor.fetchall()
@@ -44,6 +45,7 @@ async def list_accounts(user: dict = Depends(get_current_user)):
             sync_delete_remote=bool(r["sync_delete_remote"]),
             sync_read_remote=bool(r["sync_read_remote"]),
             history_exhausted=bool(r["history_exhausted"]) if "history_exhausted" in r.keys() else False,
+            unread_count=r["unread_count"] or 0,
             created_at=str(r["created_at"])
         )
         for r in rows
@@ -137,6 +139,7 @@ async def create_account(req: AccountCreate, user: dict = Depends(get_current_us
         sync_delete_remote=bool(row["sync_delete_remote"]),
         sync_read_remote=bool(row["sync_read_remote"]),
         history_exhausted=bool(row["history_exhausted"]) if "history_exhausted" in row.keys() else False,
+        unread_count=0,
         created_at=str(row["created_at"])
     )
 

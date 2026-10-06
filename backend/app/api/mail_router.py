@@ -284,6 +284,28 @@ async def batch_action(req: EmailBatchActionRequest, user: dict = Depends(get_cu
 
     return {"message": "操作完成", "count": len(req.email_ids)}
 
+@router.post("/mark-all-read")
+async def mark_all_emails_read(
+    account_id: Optional[int] = None,
+    view: str = "inbox",
+    user: dict = Depends(get_current_user)
+):
+    """
+    一键将当前邮箱或当前分类下的所有未读邮件全部标记为已读
+    """
+    async with get_db() as db:
+        query = "UPDATE emails SET is_read = 1 WHERE is_read = 0 AND is_deleted = 0"
+        params = []
+        if account_id:
+            query += " AND account_id = ?"
+            params.append(account_id)
+        if view == "starred":
+            query += " AND is_starred = 1"
+        cursor = await db.execute(query, tuple(params))
+        affected = cursor.rowcount
+        await db.commit()
+    return {"affected": affected, "message": f"已将全部 {affected} 封未读邮件标记为已读"}
+
 @router.get("/{email_id}/eml")
 async def download_eml(email_id: int, user: dict = Depends(get_current_user)):
     """导出并下载原汁原味的 .eml 邮件文件"""

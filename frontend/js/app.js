@@ -122,9 +122,12 @@ function renderAccountsNav(accounts) {
         <span class="account-color-dot" style="background-color: ${acc.color};"></span>
         <span class="account-name-text">${escapeHtml(acc.name)}</span>
       </div>
-      <button class="btn-icon btn-edit-acc" title="设置此邮箱">
-        <svg class="icon" style="width: 13px; height: 13px;" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-      </button>
+      <div class="account-item-right">
+        ${acc.unread_count > 0 ? `<span class="badge-count">${acc.unread_count}</span>` : ''}
+        <button class="btn-icon btn-edit-acc" title="设置此邮箱">
+          <svg class="icon" style="width: 13px; height: 13px;" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </button>
+      </div>
     `;
 
     const editBtn = item.querySelector('.btn-edit-acc');
@@ -607,13 +610,32 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('当前页暂无未读邮件', 'info');
       return;
     }
+
+    const unreadEl = document.getElementById('badge-total-unread');
+    const totalUnread = parseInt(unreadEl ? unreadEl.textContent : '0') || ids.length;
+
+    if (totalUnread > ids.length) {
+      const confirmAll = confirm(`当前视图共有 ${totalUnread} 封未读邮件（当前页 ${ids.length} 封）。\n\n点击“确定”：将全部 ${totalUnread} 封未读邮件标记为已读\n点击“取消”：仅将当前页 ${ids.length} 封标记为已读`);
+      if (confirmAll) {
+        const params = new URLSearchParams({ view: currentView });
+        if (currentAccountId) params.append('account_id', currentAccountId);
+        const res = await fetch(`/api/mails/mark-all-read?${params.toString()}`, { method: 'POST' });
+        const data = await res.json();
+        showToast(data.message || '已全部标记为已读', 'success');
+        await loadEmails(currentPage);
+        await loadAccounts();
+        return;
+      }
+    }
+
     await fetch('/api/mails/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email_ids: ids, action: 'read' })
     });
-    showToast('已全部标记为已读', 'success');
-    loadEmails(currentPage);
+    showToast('已将当前页标记为已读', 'success');
+    await loadEmails(currentPage);
+    await loadAccounts();
   });
 
   // Gmail 经典翻页按钮事件绑定 (顶部与底部)
