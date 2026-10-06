@@ -1011,6 +1011,33 @@ body {
   height: auto;
 }
 
+.mail-body-loading {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.mail-loading-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: mailSpin 0.7s linear infinite;
+}
+
+@keyframes mailSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* ==========================================================================
    模态弹窗与通用按钮表单
    ========================================================================== */

@@ -210,7 +210,7 @@ function createMailCard(mail) {
     card.classList.remove('unread');
     const dot = card.querySelector('.unread-indicator-dot');
     if (dot) dot.remove();
-    loadMailDetail(mail.id);
+    loadMailDetail(mail.id, mail);
   });
 
   return card;
@@ -362,7 +362,52 @@ function updateRemoteHistoryBtn() {
 }
 
 // --- 邮件详情查看 ---
-async function loadMailDetail(mailId) {
+let activeLoadingMailId = null;
+
+// 即时/统一渲染邮件头部信息 (标题、发件人、日期、标星等)
+function renderMailDetailHeader(meta) {
+  if (!meta) return;
+
+  // 1. 标题立即更新 (无须等待正文网络请求)
+  document.getElementById('detail-subject').textContent = meta.subject || '(无主题)';
+
+  // 2. 发件人姓名与地址
+  const senderName = meta.from_name || meta.from_address || '未知发件人';
+  document.getElementById('detail-from-name').textContent = senderName;
+  document.getElementById('detail-from-address').textContent = meta.from_address ? `<${meta.from_address}>` : '';
+
+  // 3. 邮件日期
+  if (meta.date) {
+    document.getElementById('detail-date').textContent = new Date(meta.date).toLocaleString('zh-CN');
+  } else {
+    document.getElementById('detail-date').textContent = '';
+  }
+
+  // 4. 发件人头像首字母
+  const avatarLetter = (senderName || 'M')[0].toUpperCase();
+  document.getElementById('detail-avatar').textContent = avatarLetter;
+
+  // 5. 标星状态
+  const starBtn = document.getElementById('btn-detail-star');
+  if (starBtn) {
+    starBtn.classList.toggle('active', !!meta.is_starred);
+    const starIcon = starBtn.querySelector('.icon-star');
+    if (starIcon) {
+      starIcon.setAttribute('fill', meta.is_starred ? 'currentColor' : 'none');
+    }
+  }
+
+  // 6. 附件指示角标
+  const attTag = document.getElementById('detail-has-att');
+  if (attTag) {
+    const hasAtt = meta.attachments ? meta.attachments.length > 0 : !!meta.has_attachments;
+    attTag.style.display = hasAtt ? 'inline-flex' : 'none';
+  }
+}
+
+async function loadMailDetail(mailId, initialMeta = null) {
+  activeLoadingMailId = mailId;
+
   const detailPanel = document.getElementById('mail-detail-panel');
   detailPanel.classList.add('active');
   detailPanel.scrollTop = 0;
@@ -371,37 +416,44 @@ async function loadMailDetail(mailId) {
   const contentWrapper = document.getElementById('detail-content-wrapper');
   contentWrapper.style.display = 'flex';
 
+  // 1. 优先使用列表已有元数据即时渲染头部，告别等待
+  const meta = initialMeta || currentMails.find(m => m.id === mailId);
+  if (meta) {
+    currentMailDetail = { ...meta };
+    renderMailDetailHeader(meta);
+  }
+
+  // 清空/隐藏旧邮件的附件列表（待详情接口返回完整附件结构）
+  const attBox = document.getElementById('detail-attachments-box');
+  if (attBox) {
+    attBox.style.display = 'none';
+    attBox.innerHTML = '';
+  }
+
+  // 2. 正文区域展示优雅加载状态
   const bodyContainer = document.getElementById('detail-body-container');
   bodyContainer.scrollTop = 0;
-  bodyContainer.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted); font-size:13px;">正在从服务器载入正文并同步状态...</div>';
+  bodyContainer.innerHTML = `
+    <div class="mail-body-loading">
+      <div class="mail-loading-spinner"></div>
+      <span>正在载入邮件正文并同步状态...</span>
+    </div>
+  `;
 
   try {
     const res = await fetch(`/api/mails/${mailId}`);
     if (!res.ok) throw new Error('Load detail failed');
-    currentMailDetail = await res.json();
+    const data = await res.json();
 
-    // 渲染基础信息
-    document.getElementById('detail-subject').textContent = currentMailDetail.subject || '(无主题)';
-    document.getElementById('detail-from-name').textContent = currentMailDetail.from_name || currentMailDetail.from_address;
-    document.getElementById('detail-from-address').textContent = `<${currentMailDetail.from_address}>`;
-    document.getElementById('detail-date').textContent = new Date(currentMailDetail.date).toLocaleString('zh-CN');
-    
-    // 发件人头像首字母
-    const avatarLetter = (currentMailDetail.from_name || currentMailDetail.from_address)[0].toUpperCase();
-    document.getElementById('detail-avatar').textContent = avatarLetter;
+    // 检查是否仍是当前所选邮件，避免快速连点时的网络竞态冲突
+    if (activeLoadingMailId !== mailId) return;
 
-    // 标星状态更新
-    const starBtn = document.getElementById('btn-detail-star');
-    if (starBtn) {
-      starBtn.classList.toggle('active', currentMailDetail.is_starred);
-      const starIcon = starBtn.querySelector('.icon-star');
-      if (starIcon) {
-        starIcon.setAttribute('fill', currentMailDetail.is_starred ? 'currentColor' : 'none');
-      }
-    }
+    currentMailDetail = data;
+
+    // 完整数据到达后，再次刷新头部（同步可能更新的标星、发件人全称等）
+    renderMailDetailHeader(currentMailDetail);
 
     // 附件展示 (沉底渲染，正文优先)
-    const attBox = document.getElementById('detail-attachments-box');
     const attTag = document.getElementById('detail-has-att');
     if (currentMailDetail.attachments && currentMailDetail.attachments.length > 0) {
       if (attTag) attTag.style.display = 'inline-flex';
@@ -460,7 +512,9 @@ async function loadMailDetail(mailId) {
     });
 
   } catch (e) {
-    showToast('加载邮件详情失败', 'error');
+    if (activeLoadingMailId === mailId) {
+      showToast('加载邮件详情失败', 'error');
+    }
   }
 }
 
