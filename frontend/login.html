@@ -11,13 +11,13 @@
     })();
   </script>
   <link rel="stylesheet" href="/css/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📬</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230b57d0'><path d='M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z'/></svg>">
   <style>
     body {
       display: flex;
       align-items: center;
       justify-content: center;
-      background-color: var(--bg-primary);
+      background-color: var(--bg-app);
       color: var(--text-primary);
       min-height: 100vh;
       min-height: 100dvh;
@@ -37,9 +37,9 @@
     .auth-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-color);
-      border-radius: 14px;
+      border-radius: 16px;
       padding: 34px 30px;
-      box-shadow: var(--shadow-lg);
+      box-shadow: var(--shadow-md);
       display: flex;
       flex-direction: column;
       gap: 22px;
@@ -54,25 +54,28 @@
     .brand-big-icon {
       width: 52px;
       height: 52px;
-      background: linear-gradient(135deg, var(--primary), var(--accent));
-      border-radius: 12px;
+      background: var(--primary);
+      border-radius: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 26px;
-      box-shadow: var(--shadow-glow);
+      color: #fff;
     }
   </style>
 </head>
 <body>
   <div class="theme-corner-toggle">
-    <button class="btn-icon" id="btn-toggle-theme" title="切换浅色/深色主题" style="font-size: 18px; padding: 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-surface);">🌓</button>
+    <button class="btn-icon" id="btn-toggle-theme" title="切换浅色/深色主题" style="border: 1px solid var(--border-color); background: var(--bg-surface);">
+      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
   </div>
 
   <div class="login-container">
     <div class="auth-card">
       <div class="login-header">
-        <div class="brand-big-icon">📬</div>
+        <div class="brand-big-icon">
+          <svg class="icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
         <h2 id="login-title" style="color: var(--text-primary); font-size: 20px; font-weight: 700;">MailOne</h2>
         <p id="login-subtitle" style="font-size: 13px; color: var(--text-muted);">聚合多邮箱与即时推送管理面板</p>
       </div>
@@ -93,7 +96,7 @@
           <input type="text" id="totp-code" class="form-input" placeholder="6 位动态口令" maxlength="6" style="letter-spacing: 2px; font-weight: 700;">
         </div>
 
-        <button type="submit" class="btn-primary" id="btn-submit-login" style="width: 100%; justify-content: center; padding: 11px; margin-top: 4px; font-size: 14px;">
+        <button type="submit" class="btn-primary" id="btn-submit-login" style="width: 100%; justify-content: center; padding: 10px; margin-top: 4px; font-size: 14px;">
           登 录
         </button>
       </form>
@@ -113,18 +116,13 @@
     function applyTheme(theme) {
       document.documentElement.setAttribute('data-theme', theme);
       localStorage.setItem('mailone_theme', theme);
-      const btn = document.getElementById('btn-toggle-theme');
-      if (btn) {
-        btn.textContent = theme === 'light' ? '☀️' : '🌙';
-        btn.title = theme === 'light' ? '当前：Claude 暖米调（点击切为高级石墨黑）' : '当前：高级石墨黑（点击切为 Claude 暖米调）';
-      }
     }
 
     function toggleTheme() {
       const current = document.documentElement.getAttribute('data-theme') || 'light';
       const next = current === 'light' ? 'dark' : 'light';
       applyTheme(next);
-      showToast(next === 'light' ? '已切换至 Claude 暖米色调 ☀️' : '已切换至高级石墨深色 🌙', 'info');
+      showToast(next === 'light' ? '已切换至经典浅色主题' : '已切换至深色护眼主题', 'info');
     }
 
     function showToast(message, type = 'info') {

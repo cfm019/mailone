@@ -5,191 +5,255 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>MailOne - 集中邮件管理与推送系统</title>
   <script>
-    // 立即执行以防白屏/暗屏闪烁
     (function() {
       const theme = localStorage.getItem('mailone_theme') || 'light';
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>
   <link rel="stylesheet" href="/css/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📬</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230b57d0'><path d='M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z'/></svg>">
 </head>
 <body>
-  <div id="app-container">
-    <!-- 1. 左侧边栏 -->
-    <aside class="sidebar" id="sidebar">
-      <div class="brand-header">
-        <div class="brand-logo">
-          <div class="logo-badge">📬</div>
-          <span>MailOne</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 4px;">
-          <button class="btn-icon" id="btn-sync-all" title="全量立即同步">🔄</button>
-          <button class="btn-icon btn-close-sidebar" id="btn-close-sidebar" title="关闭抽屉">✖</button>
-        </div>
-      </div>
-
-      <!-- 智能视图分区 -->
-      <div class="nav-section">
-        <div class="section-label">视图分类</div>
-        <div class="nav-item active" data-view="inbox">
-          <div class="nav-item-left">
-            <span class="nav-item-icon">📥</span>
-            <span>聚合收件箱</span>
-          </div>
-          <span class="badge-count" id="badge-total-unread">0</span>
-        </div>
-        <div class="nav-item" data-view="unread">
-          <div class="nav-item-left">
-            <span class="nav-item-icon">🔵</span>
-            <span>未读邮件</span>
-          </div>
-        </div>
-        <div class="nav-item" data-view="starred">
-          <div class="nav-item-left">
-            <span class="nav-item-icon">⭐</span>
-            <span>已标星</span>
-          </div>
-        </div>
-        <div class="nav-item" data-view="trash">
-          <div class="nav-item-left">
-            <span class="nav-item-icon">🗑️</span>
-            <span>废纸篓</span>
-          </div>
+  <div id="app-wrapper">
+    <!-- 顶栏：Gmail 风格经典顶栏 -->
+    <header class="app-header">
+      <div class="header-left">
+        <button class="btn-icon btn-hamburger" id="btn-toggle-sidebar" title="收起/展开菜单">
+          <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="brand-logo" id="brand-logo">
+          <svg class="icon-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <span class="brand-name">MailOne</span>
         </div>
       </div>
 
-      <!-- 邮箱账户分区 -->
-      <div class="nav-section" style="flex: 1; overflow-y: auto;">
-        <div class="section-label">
-          <span>绑定邮箱账户</span>
-          <button class="btn-icon" id="btn-add-account" title="添加新邮箱" style="font-size: 14px;">➕</button>
-        </div>
-        <div id="accounts-nav-list" style="display: flex; flex-direction: column; gap: 2px;">
-          <!-- 动态渲染账号列表 -->
-        </div>
-      </div>
-
-      <!-- 底部用户信息与设置 -->
-      <div class="sidebar-footer">
-        <div class="user-profile-badge">
-          <span>👤</span>
-          <span id="current-username">Admin</span>
-        </div>
-        <div style="display: flex; gap: 4px;">
-          <button class="btn-icon" id="btn-toggle-theme" title="切换浅色/深色主题">🌓</button>
-          <button class="btn-icon" id="btn-settings" title="安全与设置">⚙️</button>
-          <button class="btn-icon" id="btn-logout" title="退出登录">🚪</button>
-        </div>
-      </div>
-    </aside>
-
-    <!-- 移动端侧边栏抽屉遮罩 -->
-    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
-
-    <!-- 2. 中间邮件流列表 -->
-    <section class="mail-list-panel">
-      <div class="list-topbar">
-        <!-- 移动端专属常驻顶部操作栏 -->
-        <div class="mobile-list-header">
-          <button class="btn-mobile-nav" id="btn-mobile-menu" title="打开邮箱账户与分类">
-            <span>☰</span>
-            <span>邮箱列表</span>
-          </button>
-          <div class="mobile-current-title" id="mobile-header-title">全部邮件</div>
-          <div style="display: flex; align-items: center; gap: 4px;">
-            <button class="btn-icon" id="btn-toggle-theme-mobile" title="切换浅色/深色主题">🌓</button>
-            <button class="btn-icon" id="btn-refresh-list-mobile" title="刷新列表">🔄</button>
-          </div>
-        </div>
-
+      <div class="header-center">
         <div class="search-box-wrapper">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="search-input" class="search-input" placeholder="搜索主题、发件人、正文全文...">
-        </div>
-        <div class="list-actions-bar">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span id="list-status-text">全部邮件</span>
-          </div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <button class="btn-icon" id="btn-mark-all-read" title="全部标记已读">✓✓ 已读</button>
-            <button class="btn-icon" id="btn-refresh-list" title="刷新列表">🔄</button>
-          </div>
+          <span class="search-icon">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <input type="text" id="search-input" class="search-input" placeholder="在邮件中搜索主题、发件人或正文...">
+          <button class="btn-icon btn-clear-search" id="btn-clear-search" title="清空搜索" style="display: none;">
+            <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
       </div>
 
-      <!-- 滚动邮件流容器 -->
-      <div class="mail-scroll-container" id="mail-list-container">
-        <!-- 动态渲染邮件卡片 -->
-      </div>
-
-      <!-- 底部操作栏：按需批量拉取更早历史邮件 -->
-      <div class="mail-list-footer-bar" id="mail-list-footer-bar">
-        <button class="btn-load-history" id="btn-load-more-history" title="点击向服务器按需批量拉取更早的历史邮件">
-          <span id="load-history-icon">📥</span>
-          <span id="load-history-text">加载更早的 50 封历史邮件</span>
+      <div class="header-right">
+        <button class="btn-icon" id="btn-sync-all" title="全量立即同步所有邮箱">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+        </button>
+        <button class="btn-icon" id="btn-toggle-theme" title="切换浅色/深色主题">
+          <svg class="icon icon-theme" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
+        <button class="btn-icon" id="btn-settings" title="安全与设置">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <div class="user-avatar-circle" id="current-username-badge" title="当前管理员">
+          <span id="current-username-initial">A</span>
+        </div>
+        <button class="btn-icon" id="btn-logout" title="退出登录">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         </button>
       </div>
-    </section>
+    </header>
 
-    <!-- 3. 右侧邮件阅读面板 -->
-    <main class="mail-detail-panel" id="mail-detail-panel">
-      <!-- 空状态 -->
-      <div class="empty-state-view" id="detail-empty-state">
-        <span style="font-size: 48px; opacity: 0.6;">📬</span>
-        <p style="font-size: 15px;">选择一封邮件开始阅读</p>
-      </div>
-
-      <!-- 详情主内容（选中时显示） -->
-      <div id="detail-content-wrapper" style="display: none; height: 100%; flex-direction: column;">
-        <div class="detail-header-bar">
-          <div class="detail-nav-buttons">
-            <button class="btn-nav-back" id="btn-back-to-list" title="返回邮件列表">
-              <span>⬅️</span>
-              <span>返回列表</span>
-            </button>
-            <button class="btn-nav-folder" id="btn-detail-open-sidebar" title="查看所有邮箱与分类">
-              <span>📁</span>
-              <span>邮箱分类</span>
-            </button>
+    <!-- 工作区主体 -->
+    <div id="app-container">
+      <!-- 1. 左侧边栏（支持收拢与展开） -->
+      <aside class="sidebar" id="sidebar">
+        <!-- 视图分区 -->
+        <div class="nav-section">
+          <div class="section-label">
+            <span>视图分类</span>
+          </div>
+          <div class="nav-item active" data-view="inbox" title="收件箱">
+            <div class="nav-item-left">
+              <span class="nav-item-icon">
+                <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              </span>
+              <span class="nav-item-text">收件箱</span>
+            </div>
+            <span class="badge-count" id="badge-total-unread">0</span>
+          </div>
+          <div class="nav-item" data-view="unread" title="未读邮件">
+            <div class="nav-item-left">
+              <span class="nav-item-icon">
+                <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg>
+              </span>
+              <span class="nav-item-text">未读邮件</span>
+            </div>
+          </div>
+          <div class="nav-item" data-view="starred" title="已标星">
+            <div class="nav-item-left">
+              <span class="nav-item-icon">
+                <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </span>
+              <span class="nav-item-text">已标星</span>
+            </div>
+          </div>
+          <div class="nav-item" data-view="trash" title="废纸篓">
+            <div class="nav-item-left">
+              <span class="nav-item-icon">
+                <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </span>
+              <span class="nav-item-text">废纸篓</span>
+            </div>
           </div>
         </div>
 
-        <div class="detail-meta-container">
-          <div class="detail-title-row">
-            <h1 class="detail-title" id="detail-subject">(无主题)</h1>
-            <div class="mail-action-toolbar" id="mail-action-toolbar" title="邮件操作">
-              <button class="btn-mail-action" id="btn-detail-star" title="标星/取消">⭐</button>
-              <button class="btn-mail-action" id="btn-detail-unread" title="设为未读">✉️</button>
-              <button class="btn-mail-action" id="btn-detail-paper-mode" title="切换信纸明暗（暗色/浅白信纸）">📄</button>
-              <button class="btn-mail-action" id="btn-detail-download-eml" title="下载 .eml 原文件">💾</button>
-              <button class="btn-mail-action btn-mail-action-danger" id="btn-detail-trash" title="移入废纸篓">🗑️</button>
+        <!-- 邮箱账户分区 -->
+        <div class="nav-section accounts-section">
+          <div class="section-label">
+            <span>邮箱账户</span>
+            <button class="btn-icon btn-add-acc" id="btn-add-account" title="添加新邮箱">
+              <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+          <div id="accounts-nav-list">
+            <!-- 动态渲染账号列表 -->
+          </div>
+        </div>
+
+        <div class="sidebar-footer-info">
+          <span class="sidebar-user-name" id="current-username">Admin</span>
+        </div>
+      </aside>
+
+      <!-- 移动端侧边栏遮罩 -->
+      <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+      <!-- 2. 中间邮件列表栏 -->
+      <section class="mail-list-panel">
+        <!-- 工具操作栏 -->
+        <div class="list-topbar">
+          <!-- 移动端专属顶栏 -->
+          <div class="mobile-list-header">
+            <button class="btn-icon btn-mobile-nav" id="btn-mobile-menu" title="打开导航抽屉">
+              <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <div class="mobile-current-title" id="mobile-header-title">收件箱</div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <button class="btn-icon" id="btn-refresh-list-mobile" title="刷新列表">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+              </button>
             </div>
           </div>
-          
-          <div class="detail-sender-row">
-            <div class="sender-info-cluster">
-              <div class="avatar-circle" id="detail-avatar">M</div>
-              <div class="sender-names">
-                <span class="sender-display-name" id="detail-from-name">Sender Name</span>
-                <span class="sender-email-address" id="detail-from-address">sender@example.com</span>
+
+          <!-- 桌面端动作栏与 Gmail 经典翻页栏 -->
+          <div class="list-actions-bar">
+            <div class="actions-bar-left">
+              <button class="btn-icon" id="btn-refresh-list" title="刷新列表">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+              </button>
+              <button class="btn-icon" id="btn-mark-all-read" title="全部标记已读">
+                <svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/><polyline points="20 12 14 18"/></svg>
+              </button>
+              <span class="list-view-title" id="list-status-text">收件箱</span>
+            </div>
+
+            <!-- Gmail 风格经典翻页器 -->
+            <div class="pagination-widget">
+              <span class="pagination-info" id="pagination-top-text">0–0 / 0</span>
+              <button class="btn-icon btn-page" id="btn-page-prev-top" title="上一页" disabled>
+                <svg class="icon" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <button class="btn-icon btn-page" id="btn-page-next-top" title="下一页" disabled>
+                <svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 邮件列表卡片容器 -->
+        <div class="mail-scroll-container" id="mail-list-container">
+          <!-- 动态渲染邮件卡片 -->
+        </div>
+
+        <!-- 底部翻页与状态栏 -->
+        <div class="mail-list-footer-bar" id="mail-list-footer-bar">
+          <div class="footer-pagination-group">
+            <button class="btn-icon btn-page" id="btn-page-prev-bottom" title="上一页" disabled>
+              <svg class="icon" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span class="pagination-info" id="pagination-bottom-text">0–0 / 0</span>
+            <button class="btn-icon btn-page" id="btn-page-next-bottom" title="下一页" disabled>
+              <svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+          <button class="btn-secondary btn-check-remote" id="btn-check-remote-history" title="连接邮件服务器检查是否有更早历史邮件">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span id="remote-history-text">检测远端更早历史</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- 3. 右侧邮件阅读面板 -->
+      <main class="mail-detail-panel" id="mail-detail-panel">
+        <!-- 空状态 -->
+        <div class="empty-state-view" id="detail-empty-state">
+          <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+          <p>选择一封邮件开始阅读</p>
+        </div>
+
+        <!-- 详情内容区 -->
+        <div id="detail-content-wrapper" style="display: none; height: 100%; flex-direction: column;">
+          <div class="detail-header-bar">
+            <div class="detail-nav-buttons">
+              <button class="btn-nav-back" id="btn-back-to-list" title="返回邮件列表">
+                <svg class="icon" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                <span>返回</span>
+              </button>
+              <button class="btn-nav-folder" id="btn-detail-open-sidebar" title="查看邮箱与分类">
+                <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                <span>邮箱分类</span>
+              </button>
+            </div>
+
+            <div class="mail-action-toolbar" id="mail-action-toolbar">
+              <button class="btn-icon btn-mail-action" id="btn-detail-star" title="标星/取消">
+                <svg class="icon icon-star" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </button>
+              <button class="btn-icon btn-mail-action" id="btn-detail-unread" title="设为未读">
+                <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              </button>
+              <button class="btn-icon btn-mail-action" id="btn-detail-paper-mode" title="切换信纸明暗底色">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </button>
+              <button class="btn-icon btn-mail-action" id="btn-detail-download-eml" title="下载 .eml 原文件">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </button>
+              <button class="btn-icon btn-mail-action btn-mail-action-danger" id="btn-detail-trash" title="移入废纸篓">
+                <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="detail-meta-container">
+            <div class="detail-title-row">
+              <h1 class="detail-title" id="detail-subject">(无主题)</h1>
+            </div>
+            
+            <div class="detail-sender-row">
+              <div class="sender-info-cluster">
+                <div class="avatar-circle" id="detail-avatar">M</div>
+                <div class="sender-names">
+                  <span class="sender-display-name" id="detail-from-name">Sender Name</span>
+                  <span class="sender-email-address" id="detail-from-address">sender@example.com</span>
+                </div>
               </div>
+              <span class="detail-date-badge" id="detail-date">2026-10-06 10:00</span>
             </div>
-            <span style="font-size: 12px; color: var(--text-muted);" id="detail-date">2026-10-06 10:00</span>
           </div>
-        </div>
 
-        <!-- 附件列表展示条（若有） -->
-        <div class="attachments-container" id="detail-attachments-box" style="display: none;">
-          <!-- 动态渲染附件标签 -->
-        </div>
+          <!-- 附件列表展示条 -->
+          <div class="attachments-container" id="detail-attachments-box" style="display: none;"></div>
 
-        <!-- HTML 正文阅读区 -->
-        <div class="detail-body-container" id="detail-body-container">
-          <!-- 渲染邮件安全清洗后的 HTML -->
+          <!-- HTML 正文阅读区 -->
+          <div class="detail-body-container" id="detail-body-container"></div>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   </div>
 
   <!-- 添加/编辑邮箱账户弹窗 -->
@@ -197,7 +261,9 @@
     <div class="modal-card">
       <div class="modal-header">
         <span class="modal-title" id="account-modal-title">绑定 IMAP 邮箱账户</span>
-        <button class="btn-icon modal-close-btn">✖</button>
+        <button class="btn-icon modal-close-btn">
+          <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
       <form id="form-account">
         <input type="hidden" id="acc-id" value="">
@@ -212,39 +278,57 @@
               <input type="email" id="acc-email" class="form-input" required placeholder="user@example.com">
             </div>
             <div class="form-group" style="flex: 1;">
-              <label class="form-label">徽标颜色</label>
-              <input type="color" id="acc-color" class="form-input" value="#3b82f6" style="padding: 2px; height: 38px;">
+              <label class="form-label">标识颜色</label>
+              <input type="color" id="acc-color" class="form-input" value="#1a73e8" style="padding: 2px; height: 38px;">
             </div>
           </div>
           <div style="display: flex; gap: 10px;">
             <div class="form-group" style="flex: 2;">
               <label class="form-label">IMAP 服务器</label>
-              <input type="text" id="acc-imap-server" class="form-input" required placeholder="imap.163.com">
+              <input type="text" id="acc-server" class="form-input" required placeholder="imap.gmail.com">
             </div>
             <div class="form-group" style="flex: 1;">
               <label class="form-label">端口</label>
-              <input type="number" id="acc-imap-port" class="form-input" value="993" required>
+              <input type="number" id="acc-port" class="form-input" value="993" required>
             </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">IMAP 用户名</label>
-            <input type="text" id="acc-username" class="form-input" required placeholder="通常与邮箱相同">
+          <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">登录用户名</label>
+              <input type="text" id="acc-username" class="form-input" required placeholder="user@gmail.com">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">授权密码 / 应用专属密匙</label>
+              <input type="password" id="acc-password" class="form-input" placeholder="留空则保持原密码">
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" id="acc-password-label">应用专用密码 (App Password)</label>
-            <input type="password" id="acc-password" class="form-input" placeholder="建议生成专用授权码或密码">
+          <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">监听文件夹</label>
+              <input type="text" id="acc-folder" class="form-input" value="INBOX">
+            </div>
+            <div class="form-group" style="flex: 1; display: flex; align-items: flex-end; padding-bottom: 8px;">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                <input type="checkbox" id="acc-ssl" checked>
+                <span>启用 SSL 安全连接</span>
+              </label>
+            </div>
           </div>
-          <div style="margin-top: 6px; padding: 10px; background: rgba(150,150,150,0.06); border-radius: 8px;">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
-              <input type="checkbox" id="acc-sync-delete">
-              <span><b>联动原邮箱</b>：在 MailOne 彻底删除时同步删除原邮箱邮件</span>
+          <div style="border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 5px; display: flex; flex-direction: column; gap: 8px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+              <input type="checkbox" id="acc-sync-read" checked>
+              <span>阅读后自动回写原邮箱为已读（消除原邮箱红点）</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+              <input type="checkbox" id="acc-sync-del">
+              <span>在 MailOne 删除邮件时，同步移入原邮箱废纸篓</span>
             </label>
           </div>
         </div>
-        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-          <button type="button" class="btn-danger" id="btn-delete-account" style="display: none;">🗑️ 删除此账户</button>
-          <div style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
-            <button type="button" class="btn-secondary" id="btn-test-account-conn">测试连接</button>
+        <div class="modal-footer" style="display: flex; justify-content: space-between;">
+          <button type="button" class="btn-danger" id="btn-delete-account" style="display: none;">删除此账户</button>
+          <div style="display: flex; gap: 8px; margin-left: auto;">
+            <button type="button" class="btn-secondary" id="btn-test-account">测试连接</button>
             <button type="submit" class="btn-primary" id="btn-save-account">保存账户</button>
           </div>
         </div>
@@ -252,46 +336,51 @@
     </div>
   </div>
 
-  <!-- 安全与设置弹窗 (TOTP 2FA & Telegram 测试) -->
+  <!-- 设置与安全中心模态窗 -->
   <div class="modal-backdrop" id="modal-settings">
     <div class="modal-card">
       <div class="modal-header">
-        <span class="modal-title">⚙️ 系统设置与安全防护</span>
-        <button class="btn-icon modal-close-btn">✖</button>
+        <span class="modal-title">系统与安全设置</span>
+        <button class="btn-icon modal-close-btn">
+          <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
       <div class="modal-body">
-        <div style="padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
-          <div style="font-weight: 700; font-size: 14px; margin-bottom: 6px;">🔐 两步验证 (TOTP 2FA)</div>
-          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
-            在公网部署建议启用 2FA，登录时需额外输入 Google Authenticator 等动态口令。
-          </p>
-          <div id="totp-status-box">
-            <!-- 动态渲染开启/关闭状态 -->
+        <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">两步验证 (2FA / TOTP)</h3>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">使用 Google Authenticator、1Password 等身份验证器提升账户安全性。</p>
+        
+        <div id="totp-status-box" style="padding: 12px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span id="totp-status-text" style="font-size: 13px; font-weight: 500;">检查状态中...</span>
+            <button class="btn-secondary" id="btn-manage-totp" style="padding: 5px 12px; font-size: 12px;">管理 2FA</button>
           </div>
         </div>
 
-        <div style="padding-top: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
-          <div style="font-weight: 700; font-size: 14px; margin-bottom: 6px;">📥 历史邮件正文归档</div>
-          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
-            默认历史邮件只拉取标题（点击时即时按需下载）。点击下方可在后台批量下载所有历史邮件的正文与附件至本地磁盘。
-          </p>
-          <button class="btn-secondary" id="btn-batch-fetch-bodies">📦 启动全量历史正文下载任务</button>
+        <div id="totp-setup-area" style="display: none; border-top: 1px dashed var(--border-color); padding-top: 14px;">
+          <p style="font-size: 13px; margin-bottom: 10px;">扫描下方二维码绑定验证器：</p>
+          <div style="text-align: center; margin: 12px 0;">
+            <img id="totp-qr-img" src="" alt="TOTP QR Code" style="width: 160px; height: 160px; border-radius: 8px; background: #fff; padding: 4px; box-shadow: var(--shadow-sm);">
+          </div>
+          <div class="form-group">
+            <label class="form-label">输入手机验证器显示的 6 位动态码确认：</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="totp-verify-input" class="form-input" placeholder="000000" maxlength="6" style="letter-spacing: 2px; font-weight: 700;">
+              <button class="btn-primary" id="btn-confirm-totp" style="white-space: nowrap;">激活 2FA</button>
+            </div>
+          </div>
         </div>
 
-        <div style="padding-top: 8px;">
-          <div style="font-weight: 700; font-size: 14px; margin-bottom: 6px;">🤖 Telegram Bot 推送诊断</div>
-          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
-            向环境变量中配置的 Telegram Chat 发送一条连通性测试消息。
-          </p>
-          <button class="btn-secondary" id="btn-test-telegram-push">🚀 发送 Telegram 测试消息</button>
-        </div>
+        <h3 style="font-size: 14px; font-weight: 600; margin: 20px 0 8px 0;">Telegram 推送与测试</h3>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">测试 Telegram Bot 是否已配置成功并能够正常向您的账户下发通知。</p>
+        <button class="btn-secondary" id="btn-test-telegram" style="width: 100%; justify-content: center;">发送测试推送消息</button>
+      </div>
+      <div class="modal-footer" style="text-align: right;">
+        <button type="button" class="btn-secondary modal-close-btn">关闭</button>
       </div>
     </div>
   </div>
 
-  <!-- 全局 Toast 容器 -->
   <div id="toast-container"></div>
-
   <script src="/js/app.js"></script>
 </body>
 </html>

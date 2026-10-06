@@ -1,4 +1,5 @@
 // MailOne - Core Frontend Application Logic
+// Design Aesthetic: Classic Gmail Material System (Zero Emojis, Monochrome SVG Icons, Classic Pagination)
 
 let currentView = 'inbox';
 let currentAccountId = null;
@@ -11,7 +12,7 @@ let isLoadingMails = false;
 let currentMailDetail = null;
 let accountsData = [];
 
-// --- 主题管理 (Claude Warm Parchment vs Obsidian Graphite Dark) ---
+// --- 主题管理 (Gmail Classic Light vs Obsidian Dark) ---
 function initTheme() {
   const savedTheme = localStorage.getItem('mailone_theme') || 'light';
   applyTheme(savedTheme);
@@ -20,26 +21,40 @@ function initTheme() {
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('mailone_theme', theme);
-  const toggleButtons = [
-    document.getElementById('btn-toggle-theme'),
-    document.getElementById('btn-toggle-theme-mobile')
-  ];
-  toggleButtons.forEach(btn => {
-    if (btn) {
-      btn.textContent = theme === 'light' ? '☀️' : '🌙';
-      btn.title = theme === 'light' ? '当前：Claude 暖米调（点击切为高级石墨黑）' : '当前：高级石墨黑（点击切为 Claude 暖米调）';
-    }
-  });
 }
 
 function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme') || 'light';
   const next = current === 'light' ? 'dark' : 'light';
   applyTheme(next);
-  showToast(next === 'light' ? '已切换至 Claude 暖米色调 ☀️' : '已切换至高级石墨深色 🌙', 'info');
+  showToast(next === 'light' ? '已切换至经典浅色主题' : '已切换至深色护眼主题', 'info');
 }
 
-// 移动端辅助：关闭侧边抽屉与详情面板
+// --- 侧边栏折叠管理 (像 Gmail 一样收拢/展开) ---
+function initSidebar() {
+  const isCollapsed = localStorage.getItem('mailone_sidebar_collapsed') === 'true';
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar && isCollapsed && window.innerWidth > 900) {
+    sidebar.classList.add('collapsed');
+  }
+}
+
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  if (!sidebar) return;
+
+  if (window.innerWidth <= 900) {
+    // 移动端：切换抽屉开闭
+    sidebar.classList.toggle('open');
+    if (backdrop) backdrop.classList.toggle('active');
+  } else {
+    // 桌面端：收拢或展开
+    const collapsed = sidebar.classList.toggle('collapsed');
+    localStorage.setItem('mailone_sidebar_collapsed', collapsed ? 'true' : 'false');
+  }
+}
+
 function closeMobileSidebarAndDetail() {
   const sidebar = document.getElementById('sidebar');
   const backdrop = document.getElementById('sidebar-backdrop');
@@ -51,69 +66,63 @@ function closeMobileSidebarAndDetail() {
   }
 }
 
-// --- Toast 提示工具 ---
-function showToast(message, type = 'info') {
-  const container = document.getElementById('toast-container');
-  const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
-  toast.textContent = message;
-  container.appendChild(toast);
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateY(10px)';
-    toast.style.transition = 'all 0.3s ease';
-    setTimeout(() => toast.remove(), 300);
-  }, 3200);
-}
-
-// --- 认证与初始化 ---
-async function checkAuthAndInit() {
+// --- 账户信息与当前用户初始化 ---
+async function checkAuthAndLoadInitialData() {
   try {
     const res = await fetch('/api/auth/me');
     if (!res.ok) {
       window.location.href = '/login';
       return;
     }
-    const data = await res.json();
-    document.getElementById('current-username').textContent = data.username;
+    const user = await res.json();
+    const usernameEl = document.getElementById('current-username');
+    const userInitialEl = document.getElementById('current-username-initial');
+    if (usernameEl) usernameEl.textContent = user.username;
+    if (userInitialEl) userInitialEl.textContent = (user.username || 'A')[0].toUpperCase();
 
-    // 加载数据
     await loadAccounts();
-    await loadEmails();
+    await loadEmails(1);
   } catch (err) {
     window.location.href = '/login';
   }
 }
 
-// --- 加载账户列表 ---
+// --- 加载邮箱账号列表 ---
 async function loadAccounts() {
   try {
     const res = await fetch('/api/accounts');
     if (!res.ok) return;
     accountsData = await res.json();
-    renderAccountsNav();
-  } catch (e) {
-    console.error('Error loading accounts:', e);
+    renderAccountsNav(accountsData);
+  } catch (err) {
+    console.error('Failed to load accounts', err);
   }
 }
 
-function renderAccountsNav() {
+function renderAccountsNav(accounts) {
   const container = document.getElementById('accounts-nav-list');
+  if (!container) return;
   container.innerHTML = '';
 
-  accountsData.forEach(acc => {
+  if (!accounts || accounts.length === 0) {
+    container.innerHTML = '<div style="padding: 6px 12px; font-size: 12px; color: var(--text-muted);">暂未绑定邮箱</div>';
+    return;
+  }
+
+  accounts.forEach(acc => {
     const item = document.createElement('div');
-    item.className = `nav-item ${currentAccountId === acc.id ? 'active' : ''}`;
+    item.className = `account-item ${currentAccountId === acc.id ? 'active' : ''}`;
+    item.dataset.id = acc.id;
+    item.title = `${acc.name} (${acc.email})`;
+
     item.innerHTML = `
-      <div class="nav-item-left" style="flex: 1; min-width: 0;">
+      <div class="account-item-left">
         <span class="account-color-dot" style="background-color: ${acc.color};"></span>
-        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 125px;">${escapeHtml(acc.name)}</span>
+        <span class="account-name-text">${escapeHtml(acc.name)}</span>
       </div>
-      <div style="display: flex; align-items: center; gap: 4px;">
-        ${acc.sync_status === 'syncing' ? '<span title="同步中" style="font-size: 11px;">⏳</span>' : ''}
-        ${acc.sync_status === 'error' ? '<span title="同步异常" style="color: var(--danger); font-size: 11px;">⚠️</span>' : ''}
-        <button class="btn-icon btn-edit-acc" title="编辑或删除此账户" style="font-size: 12px; padding: 2px 4px; border-radius: 4px;">⚙️</button>
-      </div>
+      <button class="btn-icon btn-edit-acc" title="设置此邮箱">
+        <svg class="icon" style="width: 13px; height: 13px;" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      </button>
     `;
 
     const editBtn = item.querySelector('.btn-edit-acc');
@@ -127,20 +136,17 @@ function renderAccountsNav() {
     item.onclick = () => {
       currentAccountId = acc.id;
       document.querySelectorAll('.sidebar .nav-item').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.sidebar .account-item').forEach(el => el.classList.remove('active'));
       item.classList.add('active');
-      const title = acc.name;
-      const statusText = document.getElementById('list-status-text');
-      const mobileTitle = document.getElementById('mobile-header-title');
-      if (statusText) statusText.textContent = title;
-      if (mobileTitle) mobileTitle.textContent = title;
+
       closeMobileSidebarAndDetail();
-      loadEmails(1, false);
+      loadEmails(1);
     };
     container.appendChild(item);
   });
 }
 
-// --- 邮件卡片 DOM 创建 ---
+// --- 邮件卡片 DOM 创建 (无 Emoji, 纯净 Material 风格) ---
 function createMailCard(mail) {
   const card = document.createElement('div');
   card.className = `mail-card ${!mail.is_read ? 'unread' : ''} ${currentMailDetail && currentMailDetail.id === mail.id ? 'selected' : ''}`;
@@ -161,12 +167,37 @@ function createMailCard(mail) {
     <div class="mail-card-snippet">${escapeHtml(mail.snippet)}</div>
     <div class="mail-card-footer">
       <span class="account-pill-badge" style="background-color: ${mail.account_color};">${escapeHtml(mail.account_name)}</span>
-      ${!mail.has_body ? '<span title="正文未下载，点击时即时载入" style="font-size:11px; color:var(--text-muted);">☁️ 待载入</span>' : ''}
-      ${mail.has_attachments ? '<span title="含附件" style="font-size: 11px;">📎</span>' : ''}
-      ${mail.is_starred ? '<span style="font-size: 11px; color: #fbbf24;">⭐</span>' : ''}
+      ${!mail.has_body ? '<span style="font-size:11px; color:var(--text-muted); display:inline-flex; align-items:center; gap:3px;"><svg class="icon" style="width:12px;height:12px;" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg> 待载入</span>' : ''}
+      ${mail.has_attachments ? '<span style="display:inline-flex; align-items:center; color:var(--text-muted);" title="含附件"><svg class="icon" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span>' : ''}
+      <button class="card-star-btn ${mail.is_starred ? 'active' : ''}" title="${mail.is_starred ? '取消标星' : '标星'}">
+        <svg class="icon" viewBox="0 0 24 24" ${mail.is_starred ? 'fill="currentColor"' : 'fill="none"'}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </button>
     </div>
   `;
 
+  // 标星点击
+  const starBtn = card.querySelector('.card-star-btn');
+  if (starBtn) {
+    starBtn.onclick = async (e) => {
+      e.stopPropagation();
+      const nextStar = !mail.is_starred;
+      mail.is_starred = nextStar;
+      starBtn.classList.toggle('active', nextStar);
+      const starIcon = starBtn.querySelector('.icon');
+      if (nextStar) {
+        starIcon.setAttribute('fill', 'currentColor');
+      } else {
+        starIcon.setAttribute('fill', 'none');
+      }
+      await fetch('/api/mails/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email_ids: [mail.id], action: nextStar ? 'star' : 'unstar' })
+      });
+    };
+  }
+
+  // 卡片点击查看详情
   card.addEventListener('click', () => {
     document.querySelectorAll('.mail-card').forEach(c => c.classList.remove('selected'));
     card.classList.add('selected');
@@ -179,17 +210,14 @@ function createMailCard(mail) {
   return card;
 }
 
-// --- 加载邮件列表（支持分页无缝追加） ---
-async function loadEmails(page = 1, append = false) {
+// --- 加载邮件列表 (经典 Gmail 分页模式) ---
+async function loadEmails(page = 1) {
   if (isLoadingMails) return;
   isLoadingMails = true;
   currentPage = page;
 
   const listContainer = document.getElementById('mail-list-container');
-  if (!append) {
-    listContainer.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);">加载中...</div>';
-    currentMails = [];
-  }
+  listContainer.innerHTML = '<div style="padding: 28px; text-align: center; color: var(--text-muted); font-size: 13px;">加载中...</div>';
 
   const params = new URLSearchParams({
     view: currentView,
@@ -206,137 +234,84 @@ async function loadEmails(page = 1, append = false) {
     const data = await res.json();
 
     currentTotalMails = data.total || 0;
+    currentMails = data.items || [];
+
     const unreadEl = document.getElementById('badge-total-unread');
     if (unreadEl) unreadEl.textContent = data.unread_total || 0;
 
-    if (append) {
-      currentMails = currentMails.concat(data.items || []);
-      renderMailList(data.items || [], true);
-    } else {
-      currentMails = data.items || [];
-      renderMailList(currentMails, false);
-    }
-
+    renderMailList(currentMails);
+    updatePaginationControls();
     updateListTitleAndCounter();
-    updateFooterStatus();
+    listContainer.scrollTop = 0;
   } catch (err) {
-    if (!append) {
-      listContainer.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--danger);">加载邮件失败</div>';
-    }
+    listContainer.innerHTML = '<div style="padding: 28px; text-align: center; color: var(--danger); font-size: 13px;">加载邮件失败，请点击刷新重试</div>';
   } finally {
     isLoadingMails = false;
   }
 }
 
-function updateListTitleAndCounter() {
-  let baseTitle = '全部邮件';
-  if (currentAccountId) {
-    const acc = accountsData.find(a => a.id == currentAccountId);
-    baseTitle = acc ? acc.name : '邮箱账户';
-  } else {
-    const activeNav = document.querySelector('.sidebar .nav-item.active[data-view]');
-    if (activeNav) {
-      const titleSpan = activeNav.querySelector('.nav-item-left span:last-child') || activeNav.querySelector('span:nth-child(2)');
-      if (titleSpan) baseTitle = titleSpan.textContent.trim();
-    }
-  }
-
-  const titleWithCount = `${baseTitle} (共 ${currentTotalMails} 封)`;
-  const statusText = document.getElementById('list-status-text');
-  const mobileTitle = document.getElementById('mobile-header-title');
-  if (statusText) statusText.textContent = titleWithCount;
-  if (mobileTitle) mobileTitle.textContent = titleWithCount;
-}
-
-function updateFooterStatus() {
-  const footer = document.getElementById('mail-list-footer-bar');
-  if (!footer) return;
-
-  const loadedCount = currentMails.length;
-  const total = currentTotalMails;
-
-  if (total === 0) {
-    footer.innerHTML = '<div style="padding: 8px; font-size: 12px; color: var(--text-muted); text-align: center;">暂无邮件</div>';
-    return;
-  }
-
-  if (loadedCount < total) {
-    footer.innerHTML = `
-      <button class="btn-load-history" id="btn-load-more-local">
-        <span>⬇️</span>
-        <span>加载更多邮件 (已展示 ${loadedCount} / ${total})</span>
-      </button>
-    `;
-    const btn = document.getElementById('btn-load-more-local');
-    if (btn) {
-      btn.onclick = () => loadEmails(currentPage + 1, true);
-    }
-  } else {
-    footer.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%;">
-        <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
-          <span>✓</span>
-          <span>已同步的 ${total} 封历史邮件已全部展开</span>
-        </div>
-        <button class="btn-load-history" id="btn-check-remote-history" style="font-size: 12px; padding: 6px 14px; border-style: dotted;">
-          <span id="remote-history-icon">📥</span>
-          <span id="remote-history-text">从邮件服务器检测更早历史</span>
-        </button>
-      </div>
-    `;
-    const remoteBtn = document.getElementById('btn-check-remote-history');
-    if (remoteBtn) {
-      remoteBtn.onclick = handleCheckRemoteHistory;
-    }
-  }
-}
-
-async function handleCheckRemoteHistory() {
-  const icon = document.getElementById('remote-history-icon');
-  const text = document.getElementById('remote-history-text');
-  const btn = document.getElementById('btn-check-remote-history');
-  if (btn) btn.disabled = true;
-  if (icon) icon.textContent = '⏳';
-  if (text) text.textContent = '正在连接原邮件服务器检测更早历史...';
-
-  try {
-    const url = currentAccountId
-      ? `/api/accounts/${currentAccountId}/fetch-more-history`
-      : `/api/accounts/fetch-more-history-all`;
-
-    const res = await fetch(url, { method: 'POST' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || '检测历史邮件失败');
-
-    if (data.fetched > 0) {
-      showToast(`🎉 成功拉取 ${data.fetched} 封更早历史邮件！`, 'success');
-      await loadEmails(1, false);
-    } else {
-      showToast(data.message || '远程服务器上已无更早的历史邮件', 'info');
-      if (text) text.textContent = '已拉取全部远端历史';
-    }
-  } catch (e) {
-    showToast(`检测失败: ${e.message}`, 'error');
-    if (btn) btn.disabled = false;
-    if (icon) icon.textContent = '📥';
-    if (text) text.textContent = '从邮件服务器检测更早历史';
-  }
-}
-
-function renderMailList(items, append = false) {
+function renderMailList(items) {
   const container = document.getElementById('mail-list-container');
-  if (!append) {
-    container.innerHTML = '';
-  }
+  container.innerHTML = '';
 
-  if ((!items || items.length === 0) && !append) {
-    container.innerHTML = '<div style="padding: 32px; text-align: center; color: var(--text-muted);">暂无匹配邮件</div>';
+  if (!items || items.length === 0) {
+    container.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-muted); font-size: 13.5px;">暂无匹配邮件</div>';
     return;
   }
 
   items.forEach(mail => {
     container.appendChild(createMailCard(mail));
   });
+}
+
+// --- 更新经典 Gmail 翻页控件 (1–50 / 758) ---
+function updatePaginationControls() {
+  const total = currentTotalMails;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  
+  const start = total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const end = Math.min(currentPage * PAGE_SIZE, total);
+  const pageText = `${start}–${end} / ${total}`;
+
+  // 顶栏与底栏翻页文本更新
+  const topText = document.getElementById('pagination-top-text');
+  const bottomText = document.getElementById('pagination-bottom-text');
+  if (topText) topText.textContent = pageText;
+  if (bottomText) bottomText.textContent = pageText;
+
+  // 上下翻页按钮禁用状态更新
+  const hasPrev = currentPage > 1;
+  const hasNext = currentPage < totalPages;
+
+  const btnPrevTop = document.getElementById('btn-page-prev-top');
+  const btnNextTop = document.getElementById('btn-page-next-top');
+  const btnPrevBottom = document.getElementById('btn-page-prev-bottom');
+  const btnNextBottom = document.getElementById('btn-page-next-bottom');
+
+  if (btnPrevTop) btnPrevTop.disabled = !hasPrev;
+  if (btnNextTop) btnNextTop.disabled = !hasNext;
+  if (btnPrevBottom) btnPrevBottom.disabled = !hasPrev;
+  if (btnNextBottom) btnNextBottom.disabled = !hasNext;
+}
+
+function updateListTitleAndCounter() {
+  let baseTitle = '收件箱';
+  if (currentAccountId) {
+    const acc = accountsData.find(a => a.id == currentAccountId);
+    baseTitle = acc ? acc.name : '邮箱账户';
+  } else {
+    const activeNav = document.querySelector('.sidebar .nav-item.active[data-view]');
+    if (activeNav) {
+      const textSpan = activeNav.querySelector('.nav-item-text');
+      if (textSpan) baseTitle = textSpan.textContent.trim();
+    }
+  }
+
+  const titleText = `${baseTitle} (${currentTotalMails} 封)`;
+  const statusText = document.getElementById('list-status-text');
+  const mobileTitle = document.getElementById('mobile-header-title');
+  if (statusText) statusText.textContent = titleText;
+  if (mobileTitle) mobileTitle.textContent = titleText;
 }
 
 // --- 邮件详情查看 ---
@@ -351,7 +326,7 @@ async function loadMailDetail(mailId) {
 
   const bodyContainer = document.getElementById('detail-body-container');
   bodyContainer.scrollTop = 0;
-  bodyContainer.innerHTML = '<div style="padding:40px; text-align:center; color:#64748b;">⏳ 正在从服务器载入正文并同步状态...</div>';
+  bodyContainer.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted); font-size:13px;">正在从服务器载入正文并同步状态...</div>';
 
   try {
     const res = await fetch(`/api/mails/${mailId}`);
@@ -371,15 +346,11 @@ async function loadMailDetail(mailId) {
     // 标星状态更新
     const starBtn = document.getElementById('btn-detail-star');
     if (starBtn) {
-      starBtn.textContent = currentMailDetail.is_starred ? '⭐' : '☆';
-      starBtn.title = currentMailDetail.is_starred ? '取消标星' : '标星';
-    }
-
-    // 来源邮箱徽标（若存在）
-    const badge = document.getElementById('detail-account-badge');
-    if (badge) {
-      badge.textContent = currentMailDetail.account_name;
-      badge.style.backgroundColor = currentMailDetail.account_color;
+      starBtn.classList.toggle('active', currentMailDetail.is_starred);
+      const starIcon = starBtn.querySelector('.icon-star');
+      if (starIcon) {
+        starIcon.setAttribute('fill', currentMailDetail.is_starred ? 'currentColor' : 'none');
+      }
     }
 
     // 附件展示
@@ -389,25 +360,23 @@ async function loadMailDetail(mailId) {
       attBox.innerHTML = '';
       currentMailDetail.attachments.forEach((att, idx) => {
         const link = document.createElement('a');
-        link.className = 'attachment-chip';
+        link.className = 'attachment-pill';
         link.href = `/api/mails/${mailId}/attachment/${idx}`;
         link.target = '_blank';
-        link.innerHTML = `📎 <span>${escapeHtml(att.filename)}</span> <small style="color:var(--text-muted)">(${formatBytes(att.size)})</small>`;
+        link.innerHTML = `
+          <svg class="icon" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          <span>${escapeHtml(att.filename)}</span>
+          <small style="color:var(--text-muted)">(${formatBytes(att.size)})</small>
+        `;
         attBox.appendChild(link);
       });
     } else {
       attBox.style.display = 'none';
     }
 
-    // HTML 正文沙箱隔离渲染并重置信纸模式
-    const bodyContainer = document.getElementById('detail-body-container');
+    // HTML 正文渲染
     bodyContainer.classList.remove('paper-light');
-    const paperModeBtn = document.getElementById('btn-detail-paper-mode');
-    if (paperModeBtn) {
-      paperModeBtn.textContent = '📄';
-      paperModeBtn.title = '切换信纸明暗（深色/浅白信纸）';
-    }
-    bodyContainer.innerHTML = currentMailDetail.html_body || `<pre>${escapeHtml(currentMailDetail.text_body)}</pre>`;
+    bodyContainer.innerHTML = currentMailDetail.html_body || `<pre style="font-family:inherit; white-space:pre-wrap;">${escapeHtml(currentMailDetail.text_body)}</pre>`;
 
   } catch (e) {
     showToast('加载邮件详情失败', 'error');
@@ -419,226 +388,141 @@ function openAddAccountModal() {
   document.getElementById('account-modal-title').textContent = '绑定 IMAP 邮箱账户';
   document.getElementById('form-account').reset();
   document.getElementById('acc-id').value = '';
-  document.getElementById('acc-color').value = '#3b82f6';
-  document.getElementById('acc-imap-port').value = '993';
-  document.getElementById('acc-password-label').textContent = '应用专用密码 (App Password)';
-  document.getElementById('acc-password').placeholder = '建议生成专用授权码或密码';
   document.getElementById('acc-password').required = true;
-  document.getElementById('btn-save-account').textContent = '保存并同步';
   document.getElementById('btn-delete-account').style.display = 'none';
   document.getElementById('modal-account').classList.add('active');
 }
 
 function openEditAccountModal(acc) {
-  document.getElementById('account-modal-title').textContent = `编辑邮箱账户：${acc.name}`;
+  document.getElementById('account-modal-title').textContent = `编辑邮箱账户 - ${acc.name}`;
   document.getElementById('acc-id').value = acc.id;
-  document.getElementById('acc-name').value = acc.name || '';
-  document.getElementById('acc-email').value = acc.email || '';
-  document.getElementById('acc-color').value = acc.color || '#3b82f6';
-  document.getElementById('acc-imap-server').value = acc.imap_server || '';
-  document.getElementById('acc-imap-port').value = acc.imap_port || 993;
-  document.getElementById('acc-username').value = acc.username || '';
+  document.getElementById('acc-name').value = acc.name;
+  document.getElementById('acc-email').value = acc.email;
+  document.getElementById('acc-color').value = acc.color;
+  document.getElementById('acc-server').value = acc.imap_server;
+  document.getElementById('acc-port').value = acc.imap_port;
+  document.getElementById('acc-username').value = acc.username;
   document.getElementById('acc-password').value = '';
-  document.getElementById('acc-password').placeholder = '留空表示保持现有密码不变';
   document.getElementById('acc-password').required = false;
-  document.getElementById('acc-password-label').innerHTML = '应用专用密码 <small style="color:var(--text-muted); font-weight:normal;">(不修改请留空)</small>';
-  document.getElementById('acc-sync-delete').checked = !!acc.sync_delete_remote;
-  document.getElementById('btn-save-account').textContent = '保存修改';
-  document.getElementById('btn-delete-account').style.display = 'inline-flex';
+  document.getElementById('acc-folder').value = acc.folder;
+  document.getElementById('acc-ssl').checked = acc.use_ssl;
+  document.getElementById('acc-sync-read').checked = acc.sync_read_remote;
+  document.getElementById('acc-sync-del').checked = acc.sync_delete_remote;
+  document.getElementById('btn-delete-account').style.display = 'block';
   document.getElementById('modal-account').classList.add('active');
 }
 
-// --- 事件监听绑定 ---
+function closeModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) modal.classList.remove('active');
+}
+
+// --- 事件监听与初始化绑定 ---
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
-  checkAuthAndInit();
+  initSidebar();
+  checkAuthAndLoadInitialData();
 
-  // 主题切换按钮（PC端侧边栏底端、移动端邮件列表顶栏）
-  ['btn-toggle-theme', 'btn-toggle-theme-mobile'].forEach(id => {
-    const btn = document.getElementById(id);
-    if (btn) {
-      btn.addEventListener('click', toggleTheme);
-    }
-  });
-
-  // 移动端：返回邮件列表
-  const backBtn = document.getElementById('btn-back-to-list');
-  if (backBtn) {
-    backBtn.addEventListener('click', () => {
-      document.getElementById('mail-detail-panel').classList.remove('active');
-    });
+  // 汉堡菜单按钮：收拢/展开侧边栏
+  const toggleSidebarBtn = document.getElementById('btn-toggle-sidebar');
+  if (toggleSidebarBtn) {
+    toggleSidebarBtn.addEventListener('click', toggleSidebar);
   }
 
-  // 移动端：从邮件详情直接呼出邮箱与分类抽屉
-  const detailOpenSidebarBtn = document.getElementById('btn-detail-open-sidebar');
-  const sidebar = document.getElementById('sidebar');
-  const backdrop = document.getElementById('sidebar-backdrop');
-  if (detailOpenSidebarBtn && sidebar && backdrop) {
-    detailOpenSidebarBtn.addEventListener('click', () => {
-      document.getElementById('mail-detail-panel').classList.remove('active');
-      sidebar.classList.add('open');
-      backdrop.classList.add('active');
-    });
-  }
-
-  // 移动端：打开侧边栏抽屉
-  const mobileMenuBtn = document.getElementById('btn-mobile-menu');
-  if (mobileMenuBtn && sidebar && backdrop) {
-    mobileMenuBtn.addEventListener('click', () => {
-      sidebar.classList.add('open');
-      backdrop.classList.add('active');
-    });
-  }
-
-  // 移动端：关闭侧边栏抽屉（点击遮罩或右上角叉号）
-  if (backdrop && sidebar) {
-    backdrop.addEventListener('click', () => {
-      sidebar.classList.remove('open');
-      backdrop.classList.remove('active');
-    });
-  }
-
-  const closeSidebarBtn = document.getElementById('btn-close-sidebar');
-  if (closeSidebarBtn && sidebar && backdrop) {
-    closeSidebarBtn.addEventListener('click', () => {
-      sidebar.classList.remove('open');
-      backdrop.classList.remove('active');
-    });
-  }
-
-  // 移动端顶部刷新按钮
-  const mobileRefreshBtn = document.getElementById('btn-refresh-list-mobile');
-  if (mobileRefreshBtn) {
-    mobileRefreshBtn.addEventListener('click', () => loadEmails(1, false));
-  }
-
-  // 标星/取消
-  const starBtn = document.getElementById('btn-detail-star');
-  if (starBtn) {
-    starBtn.addEventListener('click', async () => {
-      if (!currentMailDetail) return;
-      const nextStar = !currentMailDetail.is_starred;
-      currentMailDetail.is_starred = nextStar;
-      starBtn.textContent = nextStar ? '⭐' : '☆';
-      starBtn.title = nextStar ? '取消标星' : '标星';
-      await fetch('/api/mails/batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email_ids: [currentMailDetail.id], action: nextStar ? 'star' : 'unstar' })
-      });
-      showToast(nextStar ? '已标星 ⭐' : '已取消标星', 'info');
-      loadEmails(1, false);
-    });
-  }
-
-  // 设为未读
-  const unreadBtn = document.getElementById('btn-detail-unread');
-  if (unreadBtn) {
-    unreadBtn.addEventListener('click', async () => {
-      if (!currentMailDetail) return;
-      await fetch('/api/mails/batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email_ids: [currentMailDetail.id], action: 'unread' })
-      });
-      showToast('已标记为未读 ✉️', 'info');
-      if (window.innerWidth <= 900) {
-        document.getElementById('mail-detail-panel').classList.remove('active');
-      }
-      loadEmails(1, false);
-    });
-  }
-
-  // 移入废纸篓
-  document.getElementById('btn-detail-trash').addEventListener('click', async () => {
-    if (!currentMailDetail) return;
-    const confirmTrash = confirm('确定要将该邮件移入废纸篓吗？');
-    if (!confirmTrash) return;
-
-    await fetch('/api/mails/batch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email_ids: [currentMailDetail.id], action: 'trash' })
-    });
-    showToast('已移入废纸篓', 'info');
-    document.getElementById('detail-empty-state').style.display = 'flex';
-    document.getElementById('detail-content-wrapper').style.display = 'none';
-    currentMailDetail = null;
-    loadEmails(1, false);
-  });
-
-  // 下载原始 .eml
-  document.getElementById('btn-detail-download-eml').addEventListener('click', () => {
-    if (currentMailDetail) {
-      window.open(`/api/mails/${currentMailDetail.id}/eml`, '_blank');
-    }
-  });
-
-  // 切换信纸明暗底色（深色/浅白纸张模式）
-  const paperModeBtn = document.getElementById('btn-detail-paper-mode');
-  if (paperModeBtn) {
-    paperModeBtn.addEventListener('click', () => {
-      const container = document.getElementById('detail-body-container');
-      const isLightPaper = container.classList.toggle('paper-light');
-      paperModeBtn.textContent = isLightPaper ? '💡' : '📄';
-      paperModeBtn.title = isLightPaper ? '当前：浅白信纸（点击切回深色信纸）' : '当前：深色信纸（点击切为浅白信纸）';
-      showToast(isLightPaper ? '已切换为浅白信纸原貌' : '已切换为护眼深色信纸', 'info');
-    });
-  }
-
-  // 搜索防抖
-  let searchTimer = null;
-  document.getElementById('search-input').addEventListener('input', (e) => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      currentSearchQuery = e.target.value.trim();
+  // Logo 点击：重置到第一页收件箱
+  const brandLogo = document.getElementById('brand-logo');
+  if (brandLogo) {
+    brandLogo.addEventListener('click', () => {
+      currentView = 'inbox';
+      currentAccountId = null;
+      currentSearchQuery = '';
+      const searchInput = document.getElementById('search-input');
+      if (searchInput) searchInput.value = '';
+      document.querySelectorAll('.sidebar .nav-item').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.sidebar .account-item').forEach(el => el.classList.remove('active'));
+      const inboxNav = document.querySelector('.sidebar .nav-item[data-view="inbox"]');
+      if (inboxNav) inboxNav.classList.add('active');
       loadEmails(1);
-    }, 350);
-  });
+    });
+  }
 
-  // 智能视图切换
+  // 移动端菜单按钮
+  const mobileMenuBtn = document.getElementById('btn-mobile-menu');
+  if (mobileMenuBtn) {
+    mobileMenuBtn.addEventListener('click', toggleSidebar);
+  }
+
+  const backdrop = document.getElementById('sidebar-backdrop');
+  if (backdrop) {
+    backdrop.addEventListener('click', closeMobileSidebarAndDetail);
+  }
+
+  // 主题切换
+  const themeBtn = document.getElementById('btn-toggle-theme');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', toggleTheme);
+  }
+
+  // 搜索框输入与防抖
+  const searchInput = document.getElementById('search-input');
+  const clearSearchBtn = document.getElementById('btn-clear-search');
+  let searchTimer = null;
+
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      clearTimeout(searchTimer);
+      const val = e.target.value.trim();
+      if (clearSearchBtn) {
+        clearSearchBtn.style.display = val ? 'flex' : 'none';
+      }
+      searchTimer = setTimeout(() => {
+        currentSearchQuery = val;
+        loadEmails(1);
+      }, 350);
+    });
+  }
+
+  if (clearSearchBtn) {
+    clearSearchBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      clearSearchBtn.style.display = 'none';
+      currentSearchQuery = '';
+      loadEmails(1);
+    });
+  }
+
+  // 导航视图切换
   document.querySelectorAll('.sidebar .nav-item[data-view]').forEach(item => {
     item.addEventListener('click', () => {
       document.querySelectorAll('.sidebar .nav-item').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.sidebar .account-item').forEach(el => el.classList.remove('active'));
       item.classList.add('active');
       currentView = item.dataset.view;
       currentAccountId = null;
-      const titleSpan = item.querySelector('.nav-item-left span:last-child') || item.querySelector('span:nth-child(2)');
-      const title = titleSpan ? titleSpan.textContent.trim() : '邮件列表';
-      const statusText = document.getElementById('list-status-text');
-      const mobileTitle = document.getElementById('mobile-header-title');
-      if (statusText) statusText.textContent = title;
-      if (mobileTitle) mobileTitle.textContent = title;
       closeMobileSidebarAndDetail();
-      loadEmails(1, false);
+      loadEmails(1);
     });
   });
 
-  // 全量即时同步
-  document.getElementById('btn-sync-all').addEventListener('click', async () => {
-    showToast('正在触发所有邮箱即时同步...', 'info');
-    for (const acc of accountsData) {
-      await fetch(`/api/accounts/${acc.id}/sync`, { method: 'POST' });
-    }
-    setTimeout(loadAccounts, 2000);
-    setTimeout(loadEmails, 3000);
-  });
-
-  // 刷新与滚动加载监听
-  document.getElementById('btn-refresh-list').addEventListener('click', () => loadEmails(1, false));
-
-  const mailListContainer = document.getElementById('mail-list-container');
-  if (mailListContainer) {
-    mailListContainer.addEventListener('scroll', () => {
-      if (isLoadingMails) return;
-      const { scrollTop, scrollHeight, clientHeight } = mailListContainer;
-      if (scrollTop + clientHeight >= scrollHeight - 120) {
-        if (currentMails.length < currentTotalMails) {
-          loadEmails(currentPage + 1, true);
-        }
+  // 全量即时同步所有邮箱
+  const syncAllBtn = document.getElementById('btn-sync-all');
+  if (syncAllBtn) {
+    syncAllBtn.addEventListener('click', async () => {
+      showToast('正在向各邮箱服务器触发增量同步...', 'info');
+      for (const acc of accountsData) {
+        await fetch(`/api/accounts/${acc.id}/sync`, { method: 'POST' });
       }
+      setTimeout(loadAccounts, 2000);
+      setTimeout(() => loadEmails(1), 3000);
     });
   }
+
+  // 刷新按钮 (顶栏、移动端)
+  document.getElementById('btn-refresh-list').addEventListener('click', () => loadEmails(currentPage));
+  const mobileRefresh = document.getElementById('btn-refresh-list-mobile');
+  if (mobileRefresh) mobileRefresh.addEventListener('click', () => loadEmails(currentPage));
+
+  // 全部标记已读
   document.getElementById('btn-mark-all-read').addEventListener('click', async () => {
     const cards = document.querySelectorAll('.mail-card.unread');
     const ids = Array.from(cards).map(c => parseInt(c.dataset.id));
@@ -652,40 +536,161 @@ document.addEventListener('DOMContentLoaded', () => {
       body: JSON.stringify({ email_ids: ids, action: 'read' })
     });
     showToast('已全部标记为已读', 'success');
-    loadEmails(1, false);
+    loadEmails(currentPage);
   });
 
-  // 绑定邮箱模态窗（添加账户）
+  // Gmail 经典翻页按钮事件绑定 (顶部与底部)
+  const bindPageNav = (prevBtnId, nextBtnId) => {
+    const prevBtn = document.getElementById(prevBtnId);
+    const nextBtn = document.getElementById(nextBtnId);
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        if (currentPage > 1) loadEmails(currentPage - 1);
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        const totalPages = Math.max(1, Math.ceil(currentTotalMails / PAGE_SIZE));
+        if (currentPage < totalPages) loadEmails(currentPage + 1);
+      });
+    }
+  };
+  bindPageNav('btn-page-prev-top', 'btn-page-next-top');
+  bindPageNav('btn-page-prev-bottom', 'btn-page-next-bottom');
+
+  // 检查远端更早历史 (IMAP 单次批量拉取)
+  const remoteCheckBtn = document.getElementById('btn-check-remote-history');
+  if (remoteCheckBtn) {
+    remoteCheckBtn.addEventListener('click', async () => {
+      remoteCheckBtn.disabled = true;
+      const textSpan = document.getElementById('remote-history-text');
+      if (textSpan) textSpan.textContent = '正在检测远端历史...';
+
+      try {
+        const url = currentAccountId
+          ? `/api/accounts/${currentAccountId}/fetch-more-history`
+          : `/api/accounts/fetch-more-history-all`;
+
+        const res = await fetch(url, { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '检测失败');
+
+        if (data.fetched > 0) {
+          showToast(`已从服务器拉取 ${data.fetched} 封更早历史邮件`, 'success');
+          await loadEmails(1);
+        } else {
+          showToast(data.message || '远程邮件服务器上已无更早的历史邮件', 'info');
+          if (textSpan) textSpan.textContent = '远端历史已完整';
+        }
+      } catch (e) {
+        showToast(`检测失败: ${e.message}`, 'error');
+        if (textSpan) textSpan.textContent = '检测远端更早历史';
+      } finally {
+        remoteCheckBtn.disabled = false;
+      }
+    });
+  }
+
+  // 邮件详情操作按钮
+  const starDetailBtn = document.getElementById('btn-detail-star');
+  if (starDetailBtn) {
+    starDetailBtn.addEventListener('click', async () => {
+      if (!currentMailDetail) return;
+      const nextStar = !currentMailDetail.is_starred;
+      currentMailDetail.is_starred = nextStar;
+      starDetailBtn.classList.toggle('active', nextStar);
+      const starIcon = starDetailBtn.querySelector('.icon-star');
+      if (starIcon) starIcon.setAttribute('fill', nextStar ? 'currentColor' : 'none');
+      await fetch('/api/mails/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email_ids: [currentMailDetail.id], action: nextStar ? 'star' : 'unstar' })
+      });
+      showToast(nextStar ? '已标星' : '已取消标星', 'info');
+      loadEmails(currentPage);
+    });
+  }
+
+  const unreadDetailBtn = document.getElementById('btn-detail-unread');
+  if (unreadDetailBtn) {
+    unreadDetailBtn.addEventListener('click', async () => {
+      if (!currentMailDetail) return;
+      await fetch('/api/mails/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email_ids: [currentMailDetail.id], action: 'unread' })
+      });
+      showToast('已标记为未读', 'info');
+      closeMobileSidebarAndDetail();
+      loadEmails(currentPage);
+    });
+  }
+
+  const trashDetailBtn = document.getElementById('btn-detail-trash');
+  if (trashDetailBtn) {
+    trashDetailBtn.addEventListener('click', async () => {
+      if (!currentMailDetail) return;
+      const confirmTrash = confirm('确定要将该邮件移入废纸篓吗？');
+      if (!confirmTrash) return;
+
+      await fetch('/api/mails/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email_ids: [currentMailDetail.id], action: 'trash' })
+      });
+      showToast('已移入废纸篓', 'info');
+      document.getElementById('detail-empty-state').style.display = 'flex';
+      document.getElementById('detail-content-wrapper').style.display = 'none';
+      currentMailDetail = null;
+      loadEmails(currentPage);
+    });
+  }
+
+  const paperModeBtn = document.getElementById('btn-detail-paper-mode');
+  if (paperModeBtn) {
+    paperModeBtn.addEventListener('click', () => {
+      const container = document.getElementById('detail-body-container');
+      const isLight = container.classList.toggle('paper-light');
+      showToast(isLight ? '已切换至纯白信纸原貌' : '已切换至深色信纸', 'info');
+    });
+  }
+
+  document.getElementById('btn-detail-download-eml').addEventListener('click', () => {
+    if (currentMailDetail) {
+      window.open(`/api/mails/${currentMailDetail.id}/eml`, '_blank');
+    }
+  });
+
+  const backToListBtn = document.getElementById('btn-back-to-list');
+  if (backToListBtn) {
+    backToListBtn.addEventListener('click', () => {
+      document.getElementById('mail-detail-panel').classList.remove('active');
+    });
+  }
+
+  const detailOpenSidebarBtn = document.getElementById('btn-detail-open-sidebar');
+  if (detailOpenSidebarBtn) {
+    detailOpenSidebarBtn.addEventListener('click', toggleSidebar);
+  }
+
+  // 添加账户按钮
   document.getElementById('btn-add-account').addEventListener('click', openAddAccountModal);
 
-  // 删除邮箱账户（连带清空本地邮件）
+  // 删除账户
   document.getElementById('btn-delete-account').addEventListener('click', async () => {
     const accId = document.getElementById('acc-id').value;
     const accName = document.getElementById('acc-name').value;
     if (!accId) return;
 
-    const confirmed = confirm(
-      `确定要删除邮箱账户「${accName}」吗？\n\n⚠️ 警告：删除此账户将同时永久清理本地数据库中的所有关联邮件记录，以及存储在磁盘中的全部 .eml 原始归档文件，此操作不可恢复！`
-    );
+    const confirmed = confirm(`确定要解绑邮箱账户「${accName}」吗？\n注意：此操作将清空本地归档的所有该邮箱邮件！`);
     if (!confirmed) return;
 
-    showToast('正在删除账户并物理清理本地关联邮件...', 'info');
     try {
       const res = await fetch(`/api/accounts/${accId}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || '删除失败');
-
-      document.getElementById('modal-account').classList.remove('active');
-      showToast(`🎉 账户已删除，已同步清理本地邮件！`, 'success');
-
-      if (currentAccountId == accId) {
-        currentAccountId = null;
-        currentView = 'inbox';
-        document.getElementById('list-status-text').textContent = '聚合收件箱';
-        const mobileTitle = document.getElementById('mobile-header-title');
-        if (mobileTitle) mobileTitle.textContent = '全部邮件';
-      }
-
+      if (!res.ok) throw new Error('Delete account failed');
+      showToast(`已成功解绑并清理「${accName}」`, 'success');
+      closeModal('modal-account');
+      currentAccountId = null;
       await loadAccounts();
       await loadEmails(1);
     } catch (e) {
@@ -693,14 +698,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 测试连接
-  document.getElementById('btn-test-account-conn').addEventListener('click', async () => {
-    const accId = document.getElementById('acc-id').value;
-    const payload = getAccountFormData();
-    if (accId) {
-      payload.account_id = parseInt(accId);
-    }
-    showToast('正在测试 IMAP 连接与认证...', 'info');
+  // 测试账户连接
+  document.getElementById('btn-test-account').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-test-account');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '测试中...';
+
+    const payload = {
+      account_id: document.getElementById('acc-id').value ? parseInt(document.getElementById('acc-id').value) : null,
+      imap_server: document.getElementById('acc-server').value,
+      imap_port: parseInt(document.getElementById('acc-port').value),
+      use_ssl: document.getElementById('acc-ssl').checked,
+      username: document.getElementById('acc-username').value,
+      password: document.getElementById('acc-password').value || null
+    };
+
     try {
       const res = await fetch('/api/accounts/test', {
         method: 'POST',
@@ -708,109 +721,112 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify(payload)
       });
       const data = await res.json();
-      if (res.ok) {
-        showToast('🎉 连接并登录成功！', 'success');
+      if (res.ok && data.success) {
+        showToast(data.message || '连接与认证成功！', 'success');
       } else {
-        showToast(`连接失败: ${data.detail}`, 'error');
+        showToast(`连接失败: ${data.detail || data.error}`, 'error');
       }
     } catch (e) {
-      showToast('网络错误，无法连接服务器', 'error');
+      showToast(`连接异常: ${e.message}`, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
     }
   });
 
-  // 保存邮箱账户（新增或修改）
+  // 保存账户表单提交
   document.getElementById('form-account').addEventListener('submit', async (e) => {
     e.preventDefault();
     const accId = document.getElementById('acc-id').value;
-    const payload = getAccountFormData();
+    const saveBtn = document.getElementById('btn-save-account');
+    saveBtn.disabled = true;
 
-    if (accId) {
-      // 修改更新现有账户
-      showToast('正在保存账户配置...', 'info');
-      try {
-        const updatePayload = { ...payload };
-        if (!updatePayload.password || !updatePayload.password.trim()) {
-          delete updatePayload.password;
-        }
-        const res = await fetch(`/api/accounts/${accId}`, {
+    const payload = {
+      name: document.getElementById('acc-name').value.trim(),
+      email: document.getElementById('acc-email').value.trim(),
+      color: document.getElementById('acc-color').value,
+      imap_server: document.getElementById('acc-server').value.trim(),
+      imap_port: parseInt(document.getElementById('acc-port').value),
+      use_ssl: document.getElementById('acc-ssl').checked,
+      username: document.getElementById('acc-username').value.trim(),
+      folder: document.getElementById('acc-folder').value.trim() || 'INBOX',
+      sync_read_remote: document.getElementById('acc-sync-read').checked,
+      sync_delete_remote: document.getElementById('acc-sync-del').checked
+    };
+
+    const passwordVal = document.getElementById('acc-password').value;
+    if (passwordVal) {
+      payload.password = passwordVal;
+    }
+
+    try {
+      let res;
+      if (accId) {
+        res = await fetch(`/api/accounts/${accId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updatePayload)
+          body: JSON.stringify(payload)
         });
-        const data = await res.json();
-        if (res.ok) {
-          showToast('账户配置更新成功！', 'success');
-          document.getElementById('modal-account').classList.remove('active');
-          await loadAccounts();
-          await loadEmails(currentPage);
-        } else {
-          showToast(`更新失败: ${data.detail || '未知错误'}`, 'error');
-        }
-      } catch (e) {
-        showToast('网络请求失败', 'error');
-      }
-    } else {
-      // 添加新账户
-      showToast('正在保存并启动后台同步...', 'info');
-      try {
-        const res = await fetch('/api/accounts', {
+      } else {
+        res = await fetch('/api/accounts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        const data = await res.json();
-        if (res.ok) {
-          showToast('🎉 邮箱绑定成功！已加入聚合收信任务', 'success');
-          document.getElementById('modal-account').classList.remove('active');
-          await loadAccounts();
-          setTimeout(() => loadEmails(1), 1200);
-        } else {
-          showToast(`保存失败: ${data.detail}`, 'error');
-        }
-      } catch (e) {
-        showToast('保存失败，请检查网络', 'error');
       }
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || '保存失败');
+      }
+
+      showToast('邮箱配置已成功保存！', 'success');
+      closeModal('modal-account');
+      await loadAccounts();
+      await loadEmails(1);
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      saveBtn.disabled = false;
     }
   });
 
-  // 设置与安全弹窗
+  // 设置模态窗
   document.getElementById('btn-settings').addEventListener('click', async () => {
     document.getElementById('modal-settings').classList.add('active');
-    loadSettingsModal();
-  });
-
-  // 手工启动历史邮件正文下载
-  document.getElementById('btn-batch-fetch-bodies').addEventListener('click', async () => {
-    if (accountsData.length === 0) {
-      showToast('未绑定邮箱账户', 'info');
-      return;
-    }
-    showToast('正在后台启动全量历史正文下载任务...', 'info');
-    for (const acc of accountsData) {
-      await fetch(`/api/accounts/${acc.id}/fetch-all-bodies`, { method: 'POST' });
-    }
-    showToast('任务已在后台运行，正在分批落盘 .eml', 'success');
+    await loadTotpStatus();
   });
 
   // Telegram 测试推送
-  document.getElementById('btn-test-telegram-push').addEventListener('click', async () => {
-    showToast('正在向 Telegram 发送测试消息...', 'info');
-    const res = await fetch('/api/telegram/test', { method: 'POST' });
-    const data = await res.json();
-    if (data.success) {
-      showToast('🎉 Telegram 测试消息发送成功！', 'success');
-    } else {
-      showToast(`Telegram 推送失败: ${data.message}`, 'error');
+  document.getElementById('btn-test-telegram').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-test-telegram');
+    btn.disabled = true;
+    btn.textContent = '正在发送...';
+    try {
+      const res = await fetch('/api/telegram/test', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast('测试消息已成功下发至 Telegram', 'success');
+      } else {
+        showToast(`下发失败: ${data.detail || data.error}`, 'error');
+      }
+    } catch (e) {
+      showToast(`发送出错: ${e.message}`, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '发送测试推送消息';
     }
   });
 
   // 登出
   document.getElementById('btn-logout').addEventListener('click', async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    window.location.href = '/login';
+    if (confirm('确定要退出当前管理会话吗？')) {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/login';
+    }
   });
 
-  // 弹窗关闭按钮
+  // 通用模态窗关闭
   document.querySelectorAll('.modal-close-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('active'));
@@ -818,105 +834,119 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-function getAccountFormData() {
-  return {
-    name: document.getElementById('acc-name').value,
-    email: document.getElementById('acc-email').value,
-    color: document.getElementById('acc-color').value,
-    imap_server: document.getElementById('acc-imap-server').value,
-    imap_port: parseInt(document.getElementById('acc-imap-port').value),
-    use_ssl: true,
-    username: document.getElementById('acc-username').value,
-    password: document.getElementById('acc-password').value,
-    sync_delete_remote: document.getElementById('acc-sync-delete').checked
-  };
+// --- TOTP 2FA 相关辅助 ---
+async function loadTotpStatus() {
+  try {
+    const res = await fetch('/api/auth/me');
+    if (!res.ok) return;
+    const user = await res.json();
+    const statusText = document.getElementById('totp-status-text');
+    const manageBtn = document.getElementById('btn-manage-totp');
+    const setupArea = document.getElementById('totp-setup-area');
+
+    if (user.totp_enabled) {
+      statusText.textContent = '两步验证已启用 (受保护状态)';
+      statusText.style.color = 'var(--success)';
+      manageBtn.textContent = '关闭 2FA';
+      manageBtn.onclick = disableTotp;
+      setupArea.style.display = 'none';
+    } else {
+      statusText.textContent = '两步验证未开启';
+      statusText.style.color = 'var(--text-muted)';
+      manageBtn.textContent = '配置 2FA';
+      manageBtn.onclick = startSetupTotp;
+    }
+  } catch (e) {}
 }
 
-async function loadSettingsModal() {
-  const box = document.getElementById('totp-status-box');
-  const res = await fetch('/api/auth/me');
-  if (!res.ok) return;
-  const user = await res.json();
+async function startSetupTotp() {
+  try {
+    const res = await fetch('/api/auth/setup-totp', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail);
 
-  if (user.is_totp_enabled) {
-    box.innerHTML = `
-      <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); padding:10px 14px; border-radius:var(--radius-md);">
-        <span style="color:var(--success); font-weight:600;">✅ 已开启 TOTP 两步验证</span>
-        <button class="btn-secondary" id="btn-disable-totp-action" style="color:var(--danger); font-size:12px;">关闭2FA</button>
-      </div>
-    `;
-    document.getElementById('btn-disable-totp-action').onclick = disableTotpPrompt;
-  } else {
-    box.innerHTML = `
-      <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); border:1px solid var(--border-color); padding:10px 14px; border-radius:var(--radius-md);">
-        <span style="color:var(--text-muted);">未开启两步验证</span>
-        <button class="btn-primary" id="btn-enable-totp-action" style="font-size:12px;">立即配置2FA</button>
-      </div>
-      <div id="totp-setup-interactive" style="display:none; margin-top:12px; flex-direction:column; gap:10px;"></div>
-    `;
-    document.getElementById('btn-enable-totp-action').onclick = startTotpSetup;
+    document.getElementById('totp-qr-img').src = data.qr_uri;
+    document.getElementById('totp-setup-area').style.display = 'block';
+
+    document.getElementById('btn-confirm-totp').onclick = async () => {
+      const code = document.getElementById('totp-verify-input').value.trim();
+      if (!code || code.length !== 6) {
+        showToast('请输入 6 位有效动态口令', 'error');
+        return;
+      }
+      const verifyRes = await fetch('/api/auth/verify-totp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret: data.secret, code })
+      });
+      if (verifyRes.ok) {
+        showToast('两步验证配置成功！', 'success');
+        await loadTotpStatus();
+      } else {
+        showToast('验证码不正确，请重新输入', 'error');
+      }
+    };
+  } catch (e) {
+    showToast(e.message, 'error');
   }
 }
 
-async function startTotpSetup() {
-  const interactive = document.getElementById('totp-setup-interactive');
-  interactive.style.display = 'flex';
-  interactive.innerHTML = '正在生成密钥与二维码...';
-
-  const res = await fetch('/api/auth/setup-totp', { method: 'POST' });
-  const data = await res.json();
-
-  interactive.innerHTML = `
-    <div style="text-align:center;">
-      <p style="font-size:12px; margin-bottom:8px;">请使用 Google Authenticator / 1Password 等扫码：</p>
-      <img src="${data.qr_code_data_url}" style="width:160px; height:160px; border-radius:8px; border:2px solid #fff;">
-      <div style="font-family:monospace; font-size:11px; margin-top:6px; color:var(--text-muted);">${data.secret}</div>
-    </div>
-    <div class="form-group" style="margin-top:8px;">
-      <label class="form-label">输入扫码后生成的 6 位验证码以确认：</label>
-      <div style="display:flex; gap:8px;">
-        <input type="text" id="input-confirm-totp" class="form-input" placeholder="000000" maxlength="6">
-        <button class="btn-primary" id="btn-confirm-totp-submit">验证并开启</button>
-      </div>
-    </div>
-  `;
-
-  document.getElementById('btn-confirm-totp-submit').onclick = async () => {
-    const code = document.getElementById('input-confirm-totp').value.trim();
-    const verifyRes = await fetch('/api/auth/verify-totp', {
+async function disableTotp() {
+  const code = prompt('请输入当前的 6 位动态口令以确认关闭 2FA：');
+  if (!code) return;
+  try {
+    const res = await fetch('/api/auth/disable-totp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret: data.secret, code })
+      body: JSON.stringify({ code })
     });
-    if (verifyRes.ok) {
-      showToast('🎉 两步验证开启成功！', 'success');
-      loadSettingsModal();
+    if (res.ok) {
+      showToast('两步验证已关闭', 'info');
+      await loadTotpStatus();
     } else {
-      showToast('验证码错误，请重新输入', 'error');
+      showToast('口令错误，关闭失败', 'error');
     }
-  };
-}
-
-async function disableTotpPrompt() {
-  const code = prompt('请输入当前的 6 位动态验证码以关闭 2FA：');
-  if (!code) return;
-  const res = await fetch('/api/auth/disable-totp', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ secret: '', code })
-  });
-  if (res.ok) {
-    showToast('已关闭两步验证', 'info');
-    loadSettingsModal();
-  } else {
-    showToast('验证码错误，关闭失败', 'error');
+  } catch (e) {
+    showToast(e.message, 'error');
   }
 }
 
-// 辅助函数
+// --- 通用辅助工具函数 ---
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.25s ease';
+    setTimeout(() => toast.remove(), 250);
+  }, 2600);
+}
+
 function escapeHtml(str) {
   if (!str) return '';
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return str.replace(/[&<>"']/g, m => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  })[m]);
+}
+
+function formatMailDate(isoStr) {
+  if (!isoStr) return '';
+  const d = new Date(isoStr);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) {
+    return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  }
+  return `${d.getMonth() + 1}月${d.getDate()}日`;
 }
 
 function formatBytes(bytes) {
@@ -925,14 +955,4 @@ function formatBytes(bytes) {
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
-
-function formatMailDate(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  const now = new Date();
-  if (d.toDateString() === now.toDateString()) {
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }

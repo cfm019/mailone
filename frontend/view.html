@@ -11,10 +11,10 @@
     })();
   </script>
   <link rel="stylesheet" href="/css/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📬</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230b57d0'><path d='M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z'/></svg>">
   <style>
     body {
-      background-color: var(--bg-primary);
+      background-color: var(--bg-app);
       color: var(--text-primary);
       display: flex;
       flex-direction: column;
@@ -28,10 +28,10 @@
     .view-container {
       width: 100%;
       max-width: 760px;
-      background: var(--bg-secondary);
+      background: var(--bg-surface);
       border: 1px solid var(--border-color);
-      border-radius: 12px;
-      box-shadow: var(--shadow-lg);
+      border-radius: 16px;
+      box-shadow: var(--shadow-md);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -39,7 +39,7 @@
     }
     .view-top-bar {
       padding: 12px 18px;
-      background: var(--bg-secondary);
+      background: var(--bg-header);
       border-bottom: 1px solid var(--border-color);
       display: flex;
       align-items: center;
@@ -48,8 +48,8 @@
     }
     .view-body-wrapper {
       padding: 24px 20px;
-      background-color: var(--mail-paper-bg);
-      color: var(--mail-paper-text);
+      background-color: var(--bg-surface);
+      color: var(--text-primary);
       font-size: 15px;
       line-height: 1.6;
       overflow-x: auto;
@@ -62,18 +62,20 @@
     <div class="view-top-bar">
       <div style="display: flex; align-items: center; gap: 10px;">
         <a href="/" class="btn-nav-back" style="display: inline-flex; text-decoration: none;" title="进入 MailOne 完整邮箱系统">
-          <span>⬅️</span>
+          <svg class="icon" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
           <span>返回邮箱列表</span>
         </a>
       </div>
       <div style="display: flex; align-items: center; gap: 8px;">
-        <button class="btn-icon" id="btn-toggle-theme" title="切换浅色/深色主题">🌓</button>
+        <button class="btn-icon" id="btn-toggle-theme" title="切换浅色/深色主题">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
         <span class="account-pill-badge" id="view-account-badge">Account</span>
       </div>
     </div>
 
     <!-- 邮件元数据 -->
-    <div style="padding: 20px 22px 16px 22px; background: var(--bg-primary); display: flex; flex-direction: column; gap: 10px;">
+    <div style="padding: 20px 22px 16px 22px; background: var(--bg-surface); display: flex; flex-direction: column; gap: 10px;">
       <h1 style="font-size: 19px; font-weight: 700; color: var(--text-primary); line-height: 1.4;" id="view-subject">(无主题)</h1>
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text-secondary); flex-wrap: wrap; gap: 6px;">
         <div>
@@ -106,18 +108,13 @@
     function applyTheme(theme) {
       document.documentElement.setAttribute('data-theme', theme);
       localStorage.setItem('mailone_theme', theme);
-      const btn = document.getElementById('btn-toggle-theme');
-      if (btn) {
-        btn.textContent = theme === 'light' ? '☀️' : '🌙';
-        btn.title = theme === 'light' ? '当前：Claude 暖米调（点击切为高级石墨黑）' : '当前：高级石墨黑（点击切为 Claude 暖米调）';
-      }
     }
 
     function toggleTheme() {
       const current = document.documentElement.getAttribute('data-theme') || 'light';
       const next = current === 'light' ? 'dark' : 'light';
       applyTheme(next);
-      showToast(next === 'light' ? '已切换至 Claude 暖米色调 ☀️' : '已切换至高级石墨深色 🌙', 'info');
+      showToast(next === 'light' ? '已切换至经典浅色主题' : '已切换至深色护眼主题', 'info');
     }
 
     function showToast(message, type = 'info') {
