@@ -184,28 +184,22 @@ body {
 .brand-logo {
   display: flex;
   align-items: center;
-  gap: 9px;
   user-select: none;
   cursor: pointer;
   text-decoration: none;
+  padding: 4px 6px;
+  border-radius: 8px;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.brand-icon {
-  width: 26px;
-  height: 26px;
-  display: block;
-  flex-shrink: 0;
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.brand-logo:hover .brand-icon {
-  transform: translateY(-1px) scale(1.06);
+.brand-logo:hover {
+  opacity: 0.92;
 }
 
 .brand-title {
-  font-size: 19px;
-  font-weight: 650;
-  letter-spacing: -0.4px;
+  font-size: 20.5px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
   color: var(--text-primary);
   display: inline-flex;
   align-items: baseline;
@@ -213,22 +207,23 @@ body {
 }
 
 .brand-one {
-  font-weight: 800;
-  font-size: 20px;
+  font-weight: 850;
+  font-size: 22.5px;
   font-style: italic;
-  margin-left: 1.5px;
+  margin-left: 2px;
+  padding-right: 2px;
   background: linear-gradient(135deg, #3b82f6 0%, #7c3aed 50%, #ec4899 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   display: inline-block;
   transform-origin: bottom center;
   transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s ease;
-  filter: drop-shadow(0 2px 6px rgba(124, 58, 237, 0.25));
+  filter: drop-shadow(0 2px 8px rgba(124, 58, 237, 0.3));
 }
 
 .brand-logo:hover .brand-one {
-  transform: translateY(-1px) scale(1.1) skewX(-2deg);
-  filter: drop-shadow(0 3px 10px rgba(236, 72, 153, 0.4));
+  transform: translateY(-1.5px) scale(1.12) skewX(-2deg);
+  filter: drop-shadow(0 3px 12px rgba(236, 72, 153, 0.5));
 }
 
 .header-center {
