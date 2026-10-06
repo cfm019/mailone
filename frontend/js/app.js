@@ -4,7 +4,10 @@ let currentView = 'inbox';
 let currentAccountId = null;
 let currentSearchQuery = '';
 let currentPage = 1;
-let currentEmailLimit = 50;
+const PAGE_SIZE = 50;
+let currentTotalMails = 0;
+let currentMails = [];
+let isLoadingMails = false;
 let currentMailDetail = null;
 let accountsData = [];
 
@@ -123,7 +126,6 @@ function renderAccountsNav() {
 
     item.onclick = () => {
       currentAccountId = acc.id;
-      currentEmailLimit = 50;
       document.querySelectorAll('.sidebar .nav-item').forEach(el => el.classList.remove('active'));
       item.classList.add('active');
       const title = acc.name;
@@ -132,22 +134,67 @@ function renderAccountsNav() {
       if (statusText) statusText.textContent = title;
       if (mobileTitle) mobileTitle.textContent = title;
       closeMobileSidebarAndDetail();
-      loadEmails(1);
+      loadEmails(1, false);
     };
     container.appendChild(item);
   });
 }
 
-// --- 加载邮件列表 ---
-async function loadEmails(page = 1) {
+// --- 邮件卡片 DOM 创建 ---
+function createMailCard(mail) {
+  const card = document.createElement('div');
+  card.className = `mail-card ${!mail.is_read ? 'unread' : ''} ${currentMailDetail && currentMailDetail.id === mail.id ? 'selected' : ''}`;
+  card.dataset.id = mail.id;
+
+  const formattedDate = formatMailDate(mail.date);
+  const senderDisplay = mail.from_name || mail.from_address.split('@')[0];
+
+  card.innerHTML = `
+    <div class="mail-card-header">
+      <div class="mail-card-sender">
+        ${!mail.is_read ? '<span class="unread-indicator-dot"></span>' : ''}
+        <span>${escapeHtml(senderDisplay)}</span>
+      </div>
+      <span class="mail-card-time">${formattedDate}</span>
+    </div>
+    <div class="mail-card-subject">${escapeHtml(mail.subject || '(无主题)')}</div>
+    <div class="mail-card-snippet">${escapeHtml(mail.snippet)}</div>
+    <div class="mail-card-footer">
+      <span class="account-pill-badge" style="background-color: ${mail.account_color};">${escapeHtml(mail.account_name)}</span>
+      ${!mail.has_body ? '<span title="正文未下载，点击时即时载入" style="font-size:11px; color:var(--text-muted);">☁️ 待载入</span>' : ''}
+      ${mail.has_attachments ? '<span title="含附件" style="font-size: 11px;">📎</span>' : ''}
+      ${mail.is_starred ? '<span style="font-size: 11px; color: #fbbf24;">⭐</span>' : ''}
+    </div>
+  `;
+
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.mail-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    card.classList.remove('unread');
+    const dot = card.querySelector('.unread-indicator-dot');
+    if (dot) dot.remove();
+    loadMailDetail(mail.id);
+  });
+
+  return card;
+}
+
+// --- 加载邮件列表（支持分页无缝追加） ---
+async function loadEmails(page = 1, append = false) {
+  if (isLoadingMails) return;
+  isLoadingMails = true;
   currentPage = page;
+
   const listContainer = document.getElementById('mail-list-container');
-  listContainer.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);">加载中...</div>';
+  if (!append) {
+    listContainer.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);">加载中...</div>';
+    currentMails = [];
+  }
 
   const params = new URLSearchParams({
     view: currentView,
     page: currentPage,
-    page_size: currentEmailLimit
+    page_size: PAGE_SIZE
   });
 
   if (currentAccountId) params.append('account_id', currentAccountId);
@@ -158,77 +205,137 @@ async function loadEmails(page = 1) {
     if (!res.ok) throw new Error('Failed to load emails');
     const data = await res.json();
 
+    currentTotalMails = data.total || 0;
     const unreadEl = document.getElementById('badge-total-unread');
     if (unreadEl) unreadEl.textContent = data.unread_total || 0;
 
-    renderMailList(data.items);
-    updateLoadMoreBtnStatus();
+    if (append) {
+      currentMails = currentMails.concat(data.items || []);
+      renderMailList(data.items || [], true);
+    } else {
+      currentMails = data.items || [];
+      renderMailList(currentMails, false);
+    }
+
+    updateListTitleAndCounter();
+    updateFooterStatus();
   } catch (err) {
-    listContainer.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--danger);">加载邮件失败</div>';
+    if (!append) {
+      listContainer.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--danger);">加载邮件失败</div>';
+    }
+  } finally {
+    isLoadingMails = false;
   }
 }
 
-function updateLoadMoreBtnStatus() {
-  const btn = document.getElementById('btn-load-more-history');
-  const icon = document.getElementById('load-history-icon');
-  const text = document.getElementById('load-history-text');
-  if (!btn || !icon || !text) return;
-
-  btn.disabled = false;
-  icon.textContent = '📥';
+function updateListTitleAndCounter() {
+  let baseTitle = '全部邮件';
   if (currentAccountId) {
     const acc = accountsData.find(a => a.id == currentAccountId);
-    text.textContent = acc ? `加载更早的 50 封历史邮件 (${acc.name})` : '加载更早的 50 封历史邮件';
+    baseTitle = acc ? acc.name : '邮箱账户';
   } else {
-    text.textContent = '加载更早的历史邮件（全部活跃邮箱）';
+    const activeNav = document.querySelector('.sidebar .nav-item.active[data-view]');
+    if (activeNav) {
+      const titleSpan = activeNav.querySelector('.nav-item-left span:last-child') || activeNav.querySelector('span:nth-child(2)');
+      if (titleSpan) baseTitle = titleSpan.textContent.trim();
+    }
+  }
+
+  const titleWithCount = `${baseTitle} (共 ${currentTotalMails} 封)`;
+  const statusText = document.getElementById('list-status-text');
+  const mobileTitle = document.getElementById('mobile-header-title');
+  if (statusText) statusText.textContent = titleWithCount;
+  if (mobileTitle) mobileTitle.textContent = titleWithCount;
+}
+
+function updateFooterStatus() {
+  const footer = document.getElementById('mail-list-footer-bar');
+  if (!footer) return;
+
+  const loadedCount = currentMails.length;
+  const total = currentTotalMails;
+
+  if (total === 0) {
+    footer.innerHTML = '<div style="padding: 8px; font-size: 12px; color: var(--text-muted); text-align: center;">暂无邮件</div>';
+    return;
+  }
+
+  if (loadedCount < total) {
+    footer.innerHTML = `
+      <button class="btn-load-history" id="btn-load-more-local">
+        <span>⬇️</span>
+        <span>加载更多邮件 (已展示 ${loadedCount} / ${total})</span>
+      </button>
+    `;
+    const btn = document.getElementById('btn-load-more-local');
+    if (btn) {
+      btn.onclick = () => loadEmails(currentPage + 1, true);
+    }
+  } else {
+    footer.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%;">
+        <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
+          <span>✓</span>
+          <span>已同步的 ${total} 封历史邮件已全部展开</span>
+        </div>
+        <button class="btn-load-history" id="btn-check-remote-history" style="font-size: 12px; padding: 6px 14px; border-style: dotted;">
+          <span id="remote-history-icon">📥</span>
+          <span id="remote-history-text">从邮件服务器检测更早历史</span>
+        </button>
+      </div>
+    `;
+    const remoteBtn = document.getElementById('btn-check-remote-history');
+    if (remoteBtn) {
+      remoteBtn.onclick = handleCheckRemoteHistory;
+    }
   }
 }
 
-function renderMailList(items) {
-  const container = document.getElementById('mail-list-container');
-  container.innerHTML = '';
+async function handleCheckRemoteHistory() {
+  const icon = document.getElementById('remote-history-icon');
+  const text = document.getElementById('remote-history-text');
+  const btn = document.getElementById('btn-check-remote-history');
+  if (btn) btn.disabled = true;
+  if (icon) icon.textContent = '⏳';
+  if (text) text.textContent = '正在连接原邮件服务器检测更早历史...';
 
-  if (!items || items.length === 0) {
+  try {
+    const url = currentAccountId
+      ? `/api/accounts/${currentAccountId}/fetch-more-history`
+      : `/api/accounts/fetch-more-history-all`;
+
+    const res = await fetch(url, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || '检测历史邮件失败');
+
+    if (data.fetched > 0) {
+      showToast(`🎉 成功拉取 ${data.fetched} 封更早历史邮件！`, 'success');
+      await loadEmails(1, false);
+    } else {
+      showToast(data.message || '远程服务器上已无更早的历史邮件', 'info');
+      if (text) text.textContent = '已拉取全部远端历史';
+    }
+  } catch (e) {
+    showToast(`检测失败: ${e.message}`, 'error');
+    if (btn) btn.disabled = false;
+    if (icon) icon.textContent = '📥';
+    if (text) text.textContent = '从邮件服务器检测更早历史';
+  }
+}
+
+function renderMailList(items, append = false) {
+  const container = document.getElementById('mail-list-container');
+  if (!append) {
+    container.innerHTML = '';
+  }
+
+  if ((!items || items.length === 0) && !append) {
     container.innerHTML = '<div style="padding: 32px; text-align: center; color: var(--text-muted);">暂无匹配邮件</div>';
     return;
   }
 
   items.forEach(mail => {
-    const card = document.createElement('div');
-    card.className = `mail-card ${!mail.is_read ? 'unread' : ''} ${currentMailDetail && currentMailDetail.id === mail.id ? 'selected' : ''}`;
-    card.dataset.id = mail.id;
-
-    const formattedDate = formatMailDate(mail.date);
-    const senderDisplay = mail.from_name || mail.from_address.split('@')[0];
-
-    card.innerHTML = `
-      <div class="mail-card-header">
-        <div class="mail-card-sender">
-          ${!mail.is_read ? '<span class="unread-indicator-dot"></span>' : ''}
-          <span>${escapeHtml(senderDisplay)}</span>
-        </div>
-        <span class="mail-card-time">${formattedDate}</span>
-      </div>
-      <div class="mail-card-subject">${escapeHtml(mail.subject || '(无主题)')}</div>
-      <div class="mail-card-snippet">${escapeHtml(mail.snippet)}</div>
-      <div class="mail-card-footer">
-        <span class="account-pill-badge" style="background-color: ${mail.account_color};">${escapeHtml(mail.account_name)}</span>
-        ${!mail.has_body ? '<span title="正文未下载，点击时即时载入" style="font-size:11px; color:var(--text-muted);">☁️ 待载入</span>' : ''}
-        ${mail.has_attachments ? '<span title="含附件" style="font-size: 11px;">📎</span>' : ''}
-        ${mail.is_starred ? '<span style="font-size: 11px; color: #fbbf24;">⭐</span>' : ''}
-      </div>
-    `;
-
-    card.addEventListener('click', () => {
-      document.querySelectorAll('.mail-card').forEach(c => c.classList.remove('selected'));
-      card.classList.add('selected');
-      card.classList.remove('unread');
-      const dot = card.querySelector('.unread-indicator-dot');
-      if (dot) dot.remove();
-      loadMailDetail(mail.id);
-    });
-
-    container.appendChild(card);
+    container.appendChild(createMailCard(mail));
   });
 }
 
@@ -402,7 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 移动端顶部刷新按钮
   const mobileRefreshBtn = document.getElementById('btn-refresh-list-mobile');
   if (mobileRefreshBtn) {
-    mobileRefreshBtn.addEventListener('click', () => loadEmails(currentPage));
+    mobileRefreshBtn.addEventListener('click', () => loadEmails(1, false));
   }
 
   // 标星/取消
@@ -420,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({ email_ids: [currentMailDetail.id], action: nextStar ? 'star' : 'unstar' })
       });
       showToast(nextStar ? '已标星 ⭐' : '已取消标星', 'info');
-      loadEmails(currentPage);
+      loadEmails(1, false);
     });
   }
 
@@ -438,7 +545,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (window.innerWidth <= 900) {
         document.getElementById('mail-detail-panel').classList.remove('active');
       }
-      loadEmails(currentPage);
+      loadEmails(1, false);
     });
   }
 
@@ -457,7 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('detail-empty-state').style.display = 'flex';
     document.getElementById('detail-content-wrapper').style.display = 'none';
     currentMailDetail = null;
-    loadEmails(currentPage);
+    loadEmails(1, false);
   });
 
   // 下载原始 .eml
@@ -496,7 +603,6 @@ document.addEventListener('DOMContentLoaded', () => {
       item.classList.add('active');
       currentView = item.dataset.view;
       currentAccountId = null;
-      currentEmailLimit = 50;
       const titleSpan = item.querySelector('.nav-item-left span:last-child') || item.querySelector('span:nth-child(2)');
       const title = titleSpan ? titleSpan.textContent.trim() : '邮件列表';
       const statusText = document.getElementById('list-status-text');
@@ -504,7 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (statusText) statusText.textContent = title;
       if (mobileTitle) mobileTitle.textContent = title;
       closeMobileSidebarAndDetail();
-      loadEmails(1);
+      loadEmails(1, false);
     });
   });
 
@@ -518,49 +624,18 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(loadEmails, 3000);
   });
 
-  // 刷新与全部已读
-  document.getElementById('btn-refresh-list').addEventListener('click', () => loadEmails(currentPage));
+  // 刷新与滚动加载监听
+  document.getElementById('btn-refresh-list').addEventListener('click', () => loadEmails(1, false));
 
-  // 底部点击按需拉取更早历史邮件（单次批量 FETCH，防风控）
-  const loadMoreBtn = document.getElementById('btn-load-more-history');
-  if (loadMoreBtn) {
-    loadMoreBtn.addEventListener('click', async () => {
-      const icon = document.getElementById('load-history-icon');
-      const text = document.getElementById('load-history-text');
-
-      loadMoreBtn.disabled = true;
-      icon.textContent = '⏳';
-      text.textContent = '正在从远程服务器批量拉取更早历史...';
-
-      try {
-        const url = currentAccountId
-          ? `/api/accounts/${currentAccountId}/fetch-more-history`
-          : `/api/accounts/fetch-more-history-all`;
-
-        const res = await fetch(url, { method: 'POST' });
-        const data = await res.json();
-
-        if (!res.ok) throw new Error(data.detail || '拉取历史邮件失败');
-
-        if (data.fetched > 0) {
-          currentEmailLimit += data.fetched;
-          const leftMsg = data.has_more ? `（还有约 ${data.remaining} 封未拉取）` : '（已全部加载完毕）';
-          showToast(`🎉 成功拉取 ${data.fetched} 封更早历史邮件！${leftMsg}`, 'success');
-          await loadEmails(1);
-        } else {
-          showToast(data.message || '没有更早的历史邮件了', 'info');
+  const mailListContainer = document.getElementById('mail-list-container');
+  if (mailListContainer) {
+    mailListContainer.addEventListener('scroll', () => {
+      if (isLoadingMails) return;
+      const { scrollTop, scrollHeight, clientHeight } = mailListContainer;
+      if (scrollTop + clientHeight >= scrollHeight - 120) {
+        if (currentMails.length < currentTotalMails) {
+          loadEmails(currentPage + 1, true);
         }
-
-        if (data.has_more === false) {
-          loadMoreBtn.disabled = true;
-          icon.textContent = '✅';
-          text.textContent = '已拉取全部历史邮件';
-        } else {
-          updateLoadMoreBtnStatus();
-        }
-      } catch (e) {
-        showToast(`拉取失败: ${e.message}`, 'error');
-        updateLoadMoreBtnStatus();
       }
     });
   }
@@ -577,7 +652,7 @@ document.addEventListener('DOMContentLoaded', () => {
       body: JSON.stringify({ email_ids: ids, action: 'read' })
     });
     showToast('已全部标记为已读', 'success');
-    loadEmails(currentPage);
+    loadEmails(1, false);
   });
 
   // 绑定邮箱模态窗（添加账户）
